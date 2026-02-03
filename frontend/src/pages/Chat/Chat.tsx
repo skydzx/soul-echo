@@ -1,9 +1,10 @@
 import { useEffect, useState, useRef } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ArrowLeft, Send, Heart, MoreVertical, Sparkles } from 'lucide-react';
+import { ArrowLeft, Send, Heart, MoreVertical, Sparkles, Volume2 } from 'lucide-react';
 import { useChat } from '@/hooks/useChat';
 import { useCharacterStore } from '@/stores/characterStore';
+import AudioPlayer from '@/components/chat/AudioPlayer';
 
 export default function Chat() {
   const { id } = useParams<{ id: string }>();
@@ -136,14 +137,25 @@ export default function Chat() {
                 }`}
               >
                 <p className="leading-relaxed">{message.content}</p>
-                {message.timestamp && (
-                  <p className={`text-xs mt-1 ${message.role === 'user' ? 'text-white/60' : 'text-gray-500'}`}>
-                    {new Date(message.timestamp).toLocaleTimeString('zh-CN', {
-                      hour: '2-digit',
-                      minute: '2-digit',
-                    })}
-                  </p>
-                )}
+
+                <div className="flex items-center justify-between mt-2">
+                  <div className="flex items-center gap-2">
+                    {message.role === 'assistant' && message.content && (
+                      <AudioPlayer
+                        text={message.content}
+                        gender={character.gender}
+                      />
+                    )}
+                  </div>
+                  {message.timestamp && (
+                    <p className={`text-xs ${message.role === 'user' ? 'text-white/60' : 'text-gray-500'}`}>
+                      {new Date(message.timestamp).toLocaleTimeString('zh-CN', {
+                        hour: '2-digit',
+                        minute: '2-digit',
+                      })}
+                    </p>
+                  )}
+                </div>
               </div>
             </motion.div>
           ))}

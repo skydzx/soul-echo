@@ -21,3 +21,15 @@ export const chatApi = {
   send: (data: ChatRequest) => api.post<ChatResponse>('/chat', data).then(res => res.data),
   getHistory: (characterId: string) => api.get(`/chat/history/${characterId}`).then(res => res.data),
 };
+
+// TTS 语音相关 API
+export interface TTSResponse {
+  audio_url: string;
+  text: string;
+}
+
+export const ttsApi = {
+  generate: (text: string, gender: string) =>
+    api.post<TTSResponse>('/tts', { text, gender }).then(res => res.data),
+  getVoices: () => api.get<{ voices: string[] }>('/tts/voices').then(res => res.data),
+};

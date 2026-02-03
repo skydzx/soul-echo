@@ -1,5 +1,6 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
 from contextlib import asynccontextmanager
 import os
 from dotenv import load_dotenv
@@ -7,7 +8,7 @@ from dotenv import load_dotenv
 # 加载环境变量
 load_dotenv()
 
-from app.api import characters, chat
+from app.api import characters, chat, tts
 from app.db.database import init_db
 
 
@@ -42,6 +43,17 @@ app.add_middleware(
 # 注册路由
 app.include_router(characters.router, prefix="/api")
 app.include_router(chat.router, prefix="/api")
+app.include_router(tts.router, prefix="/api")
+
+# 静态文件服务（音频文件）
+static_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), "static")
+if os.path.exists(static_dir):
+    app.mount("/static", StaticFiles(directory=static_dir), name="static")
+
+# 音频目录别名
+audio_dir = os.path.join(static_dir, "audio")
+if os.path.exists(audio_dir):
+    app.mount("/audio", StaticFiles(directory=audio_dir), name="audio")
 
 
 @app.get("/")
