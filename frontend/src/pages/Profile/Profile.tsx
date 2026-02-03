@@ -4,6 +4,7 @@ import { motion } from 'framer-motion';
 import { ArrowLeft, Heart, MessageCircle, Edit, Trash2 } from 'lucide-react';
 import { useCharacterStore } from '@/stores/characterStore';
 import Button from '@/components/ui/Button';
+import AvatarUploader from '@/components/character/AvatarUploader';
 
 export default function Profile() {
   const { id } = useParams<{ id: string }>();
@@ -23,6 +24,11 @@ export default function Profile() {
     if (!id) return;
     await deleteCharacter(id);
     navigate('/');
+  };
+
+  const handleAvatarUpdate = (newAvatar: string) => {
+    // 刷新角色数据
+    fetchCharacters();
   };
 
   if (!character) {
@@ -62,12 +68,19 @@ export default function Profile() {
           {/* 角色信息 */}
           <div className="px-6 pb-6">
             {/* 头像 */}
-            <div className="relative -mt-16 mb-4">
-              <div className="w-32 h-32 bg-gradient-to-br from-primary-400 to-pink-400 rounded-2xl flex items-center justify-center text-6xl shadow-xl">
-                {character.gender === '女性' ? '👩' : character.gender === '男性' ? '👨' : '🧑'}
+            <div className="relative -mt-20 mb-4 flex justify-between items-end">
+              <div className="relative group">
+                <AvatarUploader
+                  characterId={character.id}
+                  currentAvatar={character.avatar}
+                  onAvatarUpdate={handleAvatarUpdate}
+                  size="xl"
+                />
               </div>
-              <div className="absolute bottom-2 right-2 px-3 py-1 bg-white/20 backdrop-blur rounded-full text-white text-sm">
-                {character.relationship_type}
+              <div className="mb-2">
+                <span className="px-4 py-1.5 bg-white/20 backdrop-blur rounded-full text-white text-sm">
+                  {character.relationship_type}
+                </span>
               </div>
             </div>
 

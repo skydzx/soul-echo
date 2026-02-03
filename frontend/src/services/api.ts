@@ -33,3 +33,16 @@ export const ttsApi = {
     api.post<TTSResponse>('/tts', { text, gender }).then(res => res.data),
   getVoices: () => api.get<{ voices: string[] }>('/tts/voices').then(res => res.data),
 };
+
+// 头像相关 API
+export const avatarApi = {
+  upload: (characterId: string, file: File) => {
+    const formData = new FormData();
+    formData.append('file', file);
+    return api.post(`/characters/${characterId}/avatar`, formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    }).then(res => res.data);
+  },
+  delete: (characterId: string) =>
+    api.delete(`/characters/${characterId}/avatar`).then(res => res.data),
+};

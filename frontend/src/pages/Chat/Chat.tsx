@@ -16,6 +16,8 @@ export default function Chat() {
   const character = characters.find((c) => c.id === id);
   const { messages, loading, streaming, sendMessage, messagesEndRef } = useChat(id || null);
 
+  const API_BASE = import.meta.env.VITE_API_BASE_URL || '';
+
   useEffect(() => {
     if (!character) {
       fetchCharacters();
@@ -72,9 +74,17 @@ export default function Chat() {
         </button>
 
         <div className="flex items-center gap-3 flex-1">
-          <div className="w-10 h-10 bg-gradient-to-br from-primary-400 to-pink-400 rounded-xl flex items-center justify-center text-xl">
-            {character.gender === '女性' ? '👩' : '👨'}
-          </div>
+          {character.avatar ? (
+            <img
+              src={`${API_BASE}${character.avatar}`}
+              alt={character.name}
+              className="w-10 h-10 rounded-xl object-cover"
+            />
+          ) : (
+            <div className="w-10 h-10 bg-gradient-to-br from-primary-400 to-pink-400 rounded-xl flex items-center justify-center text-xl">
+              {character.gender === '女性' ? '👩' : '👨'}
+            </div>
+          )}
           <div>
             <h2 className="text-white font-medium">{character.name}</h2>
             <p className="text-gray-400 text-xs">{character.relationship_type}</p>

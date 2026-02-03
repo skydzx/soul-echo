@@ -8,7 +8,7 @@ from dotenv import load_dotenv
 # 加载环境变量
 load_dotenv()
 
-from app.api import characters, chat, tts
+from app.api import characters, chat, tts, avatar
 from app.db.database import init_db
 
 
@@ -44,6 +44,7 @@ app.add_middleware(
 app.include_router(characters.router, prefix="/api")
 app.include_router(chat.router, prefix="/api")
 app.include_router(tts.router, prefix="/api")
+app.include_router(avatar.router, prefix="/api")
 
 # 静态文件服务（音频文件）
 static_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), "static")
@@ -54,6 +55,11 @@ if os.path.exists(static_dir):
 audio_dir = os.path.join(static_dir, "audio")
 if os.path.exists(audio_dir):
     app.mount("/audio", StaticFiles(directory=audio_dir), name="audio")
+
+# 头像目录
+avatar_dir = os.path.join(static_dir, "avatars")
+if os.path.exists(avatar_dir):
+    app.mount("/avatars", StaticFiles(directory=avatar_dir), name="avatars")
 
 
 @app.get("/")
