@@ -13,7 +13,7 @@ export default function Chat() {
   const [showEmoji, setShowEmoji] = useState(false);
 
   const character = characters.find((c) => c.id === id);
-  const { messages, loading, sendMessage, messagesEndRef } = useChat(id || null);
+  const { messages, loading, streaming, sendMessage, messagesEndRef } = useChat(id || null);
 
   useEffect(() => {
     if (!character) {
@@ -149,7 +149,7 @@ export default function Chat() {
           ))}
         </AnimatePresence>
 
-        {loading && (
+        {(loading || streaming) && (
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
@@ -157,10 +157,11 @@ export default function Chat() {
           >
             <div className="glass rounded-2xl rounded-bl-sm px-4 py-3 flex items-center gap-2"
             >
+              <span className="text-xs text-gray-400">{streaming ? '正在输入...' : '思考中'}</span>
               <div className="flex gap-1">
-                <span className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
-                <span className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
-                <span className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
+                <span className="w-2 h-2 bg-primary-400 rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
+                <span className="w-2 h-2 bg-primary-400 rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
+                <span className="w-2 h-2 bg-primary-400 rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
               </div>
             </div>
           </motion.div>
@@ -192,7 +193,7 @@ export default function Chat() {
 
           <button
             onClick={handleSend}
-            disabled={!inputValue.trim() || loading}
+            disabled={!inputValue.trim() || loading || streaming}
             className="p-3 bg-gradient-to-r from-primary-500 to-pink-500 rounded-xl text-white disabled:opacity-50 disabled:cursor-not-allowed hover:shadow-lg hover:shadow-primary-500/30 transition-all"
           >
             <Send className="w-5 h-5" />

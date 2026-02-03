@@ -1,10 +1,11 @@
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
-from typing import List, Dict, Optional
+from typing import List, Dict, Optional, AsyncGenerator
 from datetime import datetime
 from openai import OpenAI
 import os
 import json
+import asyncio
 
 router = APIRouter()
 
@@ -165,3 +166,91 @@ async def get_chat_history(character_id: str) -> List[Dict]:
         raise HTTPException(status_code=404, detail="角色不存在")
 
     return characters[character_id].get("chat_history", [])
+
+
+@router.post("/chat/stream")
+async def chat_stream(request: ChatRequest):
+    """流式发送消息，AI逐字回复"""
+    if not OPENAI_API_KEY:
+        raise HTTPException(status_code=500, detail="OpenAI API Key 未配置")
+
+    characters = load_characters()
+
+    if request.character_id not in characters:
+        raise HTTPException(status_code=404, detail="角色不存在")
+
+    character = characters[request.character_id]
+
+    # 构建消息列表
+    messages = [{"role": "system", "content": build_system_prompt(character)}]
+
+    # 添加历史对话
+    chat_history = character.get("chat_history", [])[-MEMORY_LENGTH:]
+    for chat in chat_history:
+        messages.append({"role": chat["role"], "content": chat["content"]})
+
+    # 添加用户消息
+    messages.append({"role": "user", "content": request.message})
+
+    async def generate():
+        """生成流式响应"""
+        client = OpenAI(api_key=OPENAI_API_KEY)
+        full_response = ""
+        timestamp = datetime.now().isoformat()
+
+        try:
+            # 创建流式请求
+            stream = client.chat.completions.create(
+                model=DEFAULT_MODEL,
+                messages=messages,
+                max_tokens=MAX_TOKENS,
+                temperature=TEMPERATURE,
+                stream=True,
+            )
+
+            # 发送开始信号
+            yield f"data: START\n\n"
+
+            # 逐字发送
+            for chunk in stream:
+                if chunk.choices[0].delta.content:
+                    content = chunk.choices[0].delta.content
+                    full_response += content
+                    yield f"data: {json.dumps({'content': content})}\n\n"
+
+            # 更新对话历史
+            character["chat_history"].append({
+                "role": "user",
+                "content": request.message,
+                "timestamp": timestamp
+            })
+            character["chat_history"].append({
+                "role": "assistant",
+                "content": full_response,
+                "timestamp": timestamp
+            })
+
+            # 只保留最近100条对话
+            if len(character["chat_history"]) > 100:
+                character["chat_history"] = character["chat_history"][-100:]
+
+            save_characters(characters)
+
+            # 发送结束信号
+            yield f"data: END\n\n"
+
+        except Exception as e:
+            yield f"data: ERROR\n{json.dumps({'error': str(e)})}\n\n"
+
+    return asyncio.create_task(_stream_response(generate()))
+
+
+async def _stream_response(generator: AsyncGenerator[str, None]):
+    """辅助函数，用于返回流式响应"""
+    from fastapi.responses import StreamingResponse
+
+    async def inner():
+        async for line in generator:
+            yield line
+
+    return StreamingResponse(inner(), media_type="text/event-stream")
