@@ -45,6 +45,7 @@ export interface CreateCharacterRequest {
   hobbies: string[];
   background: string;
   relationship_type: string;
+  preferences?: string; // 理想型描述
 }
 
 export interface ChatRequest {

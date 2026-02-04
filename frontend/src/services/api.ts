@@ -120,3 +120,36 @@ export const memoryApi = {
   getCount: (characterId: string) =>
     api.get<{ count: number }>(`/characters/${characterId}/memories/count`).then(res => res.data),
 };
+
+// AI生成相关 API
+export interface GenerateNameRequest {
+  gender: string;
+  relationship_type: string;
+  preferences?: string;
+}
+
+export interface GenerateNameResponse {
+  names: string[];
+  reasons: string[];
+}
+
+export interface GenerateAppearanceRequest {
+  gender: string;
+  relationship_type: string;
+  preferences?: string;
+}
+
+export interface GenerateAppearanceResponse {
+  appearance: string;
+  style_tips: string[];
+}
+
+export const generateApi = {
+  // 生成角色名字
+  generateName: (data: GenerateNameRequest) =>
+    api.post<GenerateNameResponse>('/generate/name', data).then(res => res.data),
+
+  // 生成外貌特征
+  generateAppearance: (data: GenerateAppearanceRequest) =>
+    api.post<GenerateAppearanceResponse>('/generate/appearance', data).then(res => res.data),
+};

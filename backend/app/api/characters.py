@@ -45,6 +45,7 @@ class CharacterCreate(BaseModel):
     hobbies: List[str] = []
     background: str = ""
     relationship_type: str = "朋友"
+    preferences: Optional[str] = None
 
 
 class CharacterResponse(BaseModel):
