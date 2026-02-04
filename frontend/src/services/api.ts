@@ -46,3 +46,46 @@ export const avatarApi = {
   delete: (characterId: string) =>
     api.delete(`/characters/${characterId}/avatar`).then(res => res.data),
 };
+
+// 记忆相关 API
+export interface Memory {
+  id: string;
+  content: string;
+  metadata: {
+    type: string;
+    importance: number;
+    created_at: string;
+  };
+  distance?: number;
+}
+
+export const memoryApi = {
+  getMemories: (characterId: string, limit: number = 10) =>
+    api.get<{ count: number; memories: Memory[] }>(`/characters/${characterId}/memories`, {
+      params: { limit }
+    }).then(res => res.data),
+
+  addMemory: (characterId: string, content: string, memoryType: string = "对话", importance: number = 5) =>
+    api.post<{ id: string; message: string }>(`/characters/${characterId}/memories`, {
+      character_id: characterId,
+      content,
+      memory_type: memoryType,
+      importance
+    }).then(res => res.data),
+
+  searchMemories: (characterId: string, query: string, nResults: number = 5) =>
+    api.post<{ count: number; memories: Memory[] }>(`/characters/${characterId}/memories/search`, {
+      character_id: characterId,
+      query,
+      n_results: nResults
+    }).then(res => res.data),
+
+  deleteMemory: (characterId: string, memoryId: string) =>
+    api.delete(`/characters/${characterId}/memories/${memoryId}`).then(res => res.data),
+
+  clearMemories: (characterId: string) =>
+    api.delete(`/characters/${characterId}/memories`).then(res => res.data),
+
+  getCount: (characterId: string) =>
+    api.get<{ count: number }>(`/characters/${characterId}/memories/count`).then(res => res.data),
+};

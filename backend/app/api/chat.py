@@ -55,7 +55,7 @@ class ChatResponse(BaseModel):
     timestamp: str
 
 
-def build_system_prompt(character: dict) -> str:
+def build_system_prompt(character: dict, memories: list = None) -> str:
     """构建系统提示词"""
     name = character.get("name", "AI伴侣")
     gender = character.get("gender", "女性")
@@ -81,6 +81,15 @@ def build_system_prompt(character: dict) -> str:
 
     prompt += f"\n爱好：{', '.join(hobbies) if hobbies else '暂无'}\n"
     prompt += f"\n背景：{background if background else '未知'}\n"
+
+    # 添加记忆
+    if memories:
+        prompt += "\n【重要记忆】\n"
+        for mem in memories:
+            content = mem.get("content", "")
+            mtype = mem.get("metadata", {}).get("type", "")
+            prompt += f"- [{mtype}] {content[:200]}\n"
+        prompt += "\n请根据以上记忆来回复，展现你对用户的了解和关心。\n"
 
     prompt += f"""
 你们的关系是：{relationship_type}
@@ -181,8 +190,21 @@ async def chat_stream(request: ChatRequest):
 
     character = characters[request.character_id]
 
+    # 检索相关记忆
+    try:
+        from app.services.memory import get_memory_service
+        memory_service = get_memory_service()
+        memories = memory_service.search_memories(
+            character_id=request.character_id,
+            query=request.message,
+            n_results=5,
+            min_importance=5
+        )
+    except Exception:
+        memories = []
+
     # 构建消息列表
-    messages = [{"role": "system", "content": build_system_prompt(character)}]
+    messages = [{"role": "system", "content": build_system_prompt(character, memories)}]
 
     # 添加历史对话
     chat_history = character.get("chat_history", [])[-MEMORY_LENGTH:]
@@ -235,6 +257,19 @@ async def chat_stream(request: ChatRequest):
                 character["chat_history"] = character["chat_history"][-100:]
 
             save_characters(characters)
+
+            # 异步存储重要记忆
+            try:
+                from app.services.memory import get_memory_service, analyze_and_store_memory
+                memory_service = get_memory_service()
+                analyze_and_store_memory(
+                    character_id=request.character_id,
+                    user_message=request.message,
+                    ai_response=full_response,
+                    personality=character.get("personality", {})
+                )
+            except Exception:
+                pass
 
             # 发送结束信号
             yield f"data: END\n\n"

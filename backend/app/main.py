@@ -8,7 +8,7 @@ from dotenv import load_dotenv
 # 加载环境变量
 load_dotenv()
 
-from app.api import characters, chat, tts, avatar
+from app.api import characters, chat, tts, avatar, memory
 from app.db.database import init_db
 
 
@@ -45,6 +45,7 @@ app.include_router(characters.router, prefix="/api")
 app.include_router(chat.router, prefix="/api")
 app.include_router(tts.router, prefix="/api")
 app.include_router(avatar.router, prefix="/api")
+app.include_router(memory.router, prefix="/api")
 
 # 静态文件服务（音频文件）
 static_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), "static")
