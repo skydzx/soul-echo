@@ -77,20 +77,12 @@ export default function Layout() {
                 </AnimatePresence>
               </div>
             ) : (
-              <div className="flex items-center gap-2">
-                <Link
-                  to="/login"
-                  className="px-4 py-2 text-gray-400 hover:text-white transition-colors text-sm font-medium"
-                >
-                  登录
-                </Link>
-                <Link
-                  to="/login"
-                  className="px-4 py-2 bg-gradient-to-r from-primary-500 to-pink-500 rounded-full text-white text-sm font-medium hover:shadow-lg hover:shadow-primary-500/30 transition-all"
-                >
-                  注册
-                </Link>
-              </div>
+              <Link
+                to="/login"
+                className="px-4 py-2 bg-gradient-to-r from-primary-500 to-pink-500 rounded-full text-white text-sm font-medium hover:shadow-lg hover:shadow-primary-500/30 transition-all"
+              >
+                登录
+              </Link>
             )}
           </nav>
         </div>

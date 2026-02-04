@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { ArrowLeft, Heart, Sparkles } from 'lucide-react';
+import { ArrowLeft, Heart } from 'lucide-react';
 import { useAuthStore } from '@/stores/authStore';
 import { useThemeStore } from '@/stores/themeStore';
 import Button from '@/components/ui/Button';
@@ -10,10 +10,8 @@ export default function Login() {
   const navigate = useNavigate();
   const { login, loading } = useAuthStore();
   const { theme } = useThemeStore();
-  const [isLogin, setIsLogin] = useState(true);
   const [formData, setFormData] = useState({
     username: '',
-    email: '',
     password: '',
   });
   const [error, setError] = useState('');
@@ -71,15 +69,10 @@ export default function Login() {
     setError('');
 
     try {
-      if (isLogin) {
-        await login(formData.username, formData.password);
-      } else {
-        // 注册
-        await useAuthStore.getState().register(formData.username, formData.email, formData.password);
-      }
+      await login(formData.username, formData.password);
       navigate('/');
     } catch (err: any) {
-      setError(err.response?.data?.detail || '操作失败，请重试');
+      setError(err.response?.data?.detail || '登录失败，请检查用户名和密码');
     }
   };
 
@@ -109,26 +102,12 @@ export default function Login() {
           <h1 className={`text-3xl font-bold bg-gradient-to-r ${theme === 'light' ? 'from-gray-700 via-gray-800 to-gray-900' : theme === 'pink' ? 'from-pink-600 via-pink-700 to-rose-600' : 'from-white via-pink-200 to-primary-300'} bg-clip-text text-transparent`}>
             SoulEcho
           </h1>
-          <p className={`${getGrayTextClass()} mt-2`}>{isLogin ? '欢迎回来' : '创建你的账户'}</p>
+          <p className={`${getGrayTextClass()} mt-2`}>欢迎回来</p>
         </div>
 
         {/* 表单 */}
         <div className="glass rounded-2xl p-6 md:p-8">
           <form onSubmit={handleSubmit} className="space-y-4">
-            {!isLogin && (
-              <div>
-                <label className={`block text-sm font-medium ${getLabelClass()} mb-2`}>邮箱</label>
-                <input
-                  type="email"
-                  placeholder="请输入邮箱"
-                  value={formData.email}
-                  onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                  className="w-full"
-                  required={!isLogin}
-                />
-              </div>
-            )}
-
             <div>
               <label className={`block text-sm font-medium ${getLabelClass()} mb-2`}>用户名</label>
               <input
@@ -160,25 +139,9 @@ export default function Login() {
             )}
 
             <Button type="submit" loading={loading} className="w-full py-4 text-base">
-              {isLogin ? '登录' : '注册'}
+              登录
             </Button>
           </form>
-
-          {/* 切换登录/注册 */}
-          <div className="mt-6 text-center">
-            <p className={getGrayTextClass()}>
-              {isLogin ? '还没有账户？' : '已有账户？'}
-              <button
-                onClick={() => {
-                  setIsLogin(!isLogin);
-                  setError('');
-                }}
-                className="ml-2 text-primary-400 hover:text-primary-300 transition-colors"
-              >
-                {isLogin ? '立即注册' : '立即登录'}
-              </button>
-            </p>
-          </div>
         </div>
       </motion.div>
     </div>

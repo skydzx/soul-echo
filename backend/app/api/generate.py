@@ -1,13 +1,9 @@
-from fastapi import APIRouter
+from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
-from openai import OpenAI
 import os
 import json
 
 router = APIRouter()
-
-# 初始化 OpenAI 客户端
-client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
 
 class GenerateRequest(BaseModel):
@@ -26,9 +22,22 @@ class GenerateAppearanceResponse(BaseModel):
     style_tips: list[str]  # 穿搭风格建议
 
 
+def get_openai_client():
+    """获取 OpenAI 客户端，如果没配置 API key 则返回 None"""
+    api_key = os.getenv("OPENAI_API_KEY")
+    if not api_key:
+        return None
+    from openai import OpenAI
+    return OpenAI(api_key=api_key)
+
+
 @router.post("/generate/name", response_model=GenerateNameResponse)
 async def generate_name(request: GenerateRequest):
     """AI 生成符合中国习惯的角色名字"""
+    client = get_openai_client()
+    if not client:
+        raise HTTPException(status_code=503, detail="未配置 OpenAI API Key，无法使用 AI 生成功能")
+
     prompt = f"""
 你是一个取名专家。根据以下信息生成5个适合的中文名字：
 
@@ -73,6 +82,10 @@ async def generate_name(request: GenerateRequest):
 @router.post("/generate/appearance", response_model=GenerateAppearanceResponse)
 async def generate_appearance(request: GenerateRequest):
     """AI 生成外貌特征描述"""
+    client = get_openai_client()
+    if not client:
+        raise HTTPException(status_code=503, detail="未配置 OpenAI API Key，无法使用 AI 生成功能")
+
     prompt = f"""
 根据以下信息生成一个详细且真实的外貌特征描述：
 
