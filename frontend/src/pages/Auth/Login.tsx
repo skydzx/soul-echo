@@ -118,7 +118,7 @@ export default function Login() {
               </div>
             )}
 
-            <Button type="submit" loading={loading} className="w-full">
+            <Button type="submit" loading={loading} className="w-full py-4 text-base">
               {isLogin ? '登录' : '注册'}
             </Button>
           </form>
