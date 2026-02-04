@@ -1,12 +1,14 @@
 import { useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Heart, Sparkles, Users, MessageCircle } from 'lucide-react';
+import { Heart, Sparkles, Users, MessageCircle, LogIn } from 'lucide-react';
 import { useCharacterStore } from '@/stores/characterStore';
+import { useAuthStore } from '@/stores/authStore';
 import CharacterCard from '@/components/character/CharacterCard';
 
 export default function Home() {
   const { characters, fetchCharacters, loading } = useCharacterStore();
+  const { isAuthenticated } = useAuthStore();
 
   useEffect(() => {
     fetchCharacters();
@@ -124,17 +126,45 @@ export default function Home() {
       <section id="characters" className="py-20 px-4">
         <div className="max-w-6xl mx-auto">
           <div className="flex items-center justify-between mb-8">
-            <h2 className="text-3xl font-bold text-white">我的伴侣</h2>
-            <Link
-              to="/create"
-              className="flex items-center gap-2 text-primary-400 hover:text-primary-300 transition-colors"
-            >
-              <span>创建新角色</span>
-              <span className="text-lg">→</span>
-            </Link>
+            <h2 className="text-3xl font-bold text-white">
+              {isAuthenticated ? '我的伴侣' : '探索 AI 伴侣'}
+            </h2>
+            {isAuthenticated && (
+              <Link
+                to="/create"
+                className="flex items-center gap-2 text-primary-400 hover:text-primary-300 transition-colors"
+              >
+                <span>创建新角色</span>
+                <span className="text-lg">→</span>
+              </Link>
+            )}
           </div>
 
-          {loading ? (
+          {!isAuthenticated ? (
+            /* 未登录状态 */
+            <div className="glass rounded-2xl p-12 text-center">
+              <div className="w-16 h-16 bg-gradient-to-br from-primary-500/20 to-pink-500/20 rounded-full flex items-center justify-center mx-auto mb-4">
+                <LogIn className="w-8 h-8 text-primary-400" />
+              </div>
+              <h3 className="text-xl font-semibold text-white mb-2">登录后开始你的故事</h3>
+              <p className="text-gray-400 mb-6">创建专属AI伴侣，开启温暖的心灵对话</p>
+              <div className="flex justify-center gap-4">
+                <Link
+                  to="/login"
+                  className="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-primary-500 to-pink-500 rounded-full text-white font-medium hover:shadow-lg transition-all"
+                >
+                  <LogIn className="w-4 h-4" />
+                  立即登录
+                </Link>
+                <Link
+                  to="/login"
+                  className="inline-flex items-center gap-2 px-6 py-3 bg-white/10 rounded-full text-white font-medium hover:bg-white/20 transition-all"
+                >
+                  免费注册
+                </Link>
+              </div>
+            </div>
+          ) : loading ? (
             <div className="flex justify-center py-12">
               <div className="w-8 h-8 border-2 border-primary-500 border-t-transparent rounded-full animate-spin" />
             </div>

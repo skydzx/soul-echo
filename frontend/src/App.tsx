@@ -4,6 +4,7 @@ import Home from '@/pages/Home/Home';
 import Create from '@/pages/Create/Create';
 import Chat from '@/pages/Chat/Chat';
 import Profile from '@/pages/Profile/Profile';
+import Login from '@/pages/Auth/Login';
 
 function App() {
   return (
@@ -14,6 +15,7 @@ function App() {
         <Route path="chat/:id" element={<Chat />} />
         <Route path="profile/:id" element={<Profile />} />
       </Route>
+      <Route path="/login" element={<Login />} />
     </Routes>
   );
 }

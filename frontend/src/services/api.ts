@@ -8,6 +8,22 @@ const api = axios.create({
   },
 });
 
+// 添加 token 到请求
+api.interceptors.request.use((config) => {
+  const token = localStorage.getItem('auth-storage');
+  if (token) {
+    try {
+      const parsed = JSON.parse(token);
+      if (parsed.state?.token) {
+        config.headers.Authorization = `Bearer ${parsed.state.token}`;
+      }
+    } catch {
+      // ignore
+    }
+  }
+  return config;
+});
+
 // 角色相关 API
 export const characterApi = {
   getAll: () => api.get<Character[]>('/characters').then(res => res.data),
@@ -152,4 +168,43 @@ export const generateApi = {
   // 生成外貌特征
   generateAppearance: (data: GenerateAppearanceRequest) =>
     api.post<GenerateAppearanceResponse>('/generate/appearance', data).then(res => res.data),
+};
+
+// 认证相关 API
+export interface LoginRequest {
+  username: string;
+  password: string;
+}
+
+export interface RegisterRequest {
+  username: string;
+  email: string;
+  password: string;
+}
+
+export interface User {
+  id: string;
+  username: string;
+  email: string;
+  avatar?: string;
+  created_at: string;
+}
+
+export interface AuthResponse {
+  access_token: string;
+  token_type: string;
+  user: User;
+}
+
+export const authApi = {
+  login: (data: LoginRequest) =>
+    api.post<AuthResponse>('/auth/login', data).then(res => res.data),
+
+  register: (data: RegisterRequest) =>
+    api.post<AuthResponse>('/auth/register', data).then(res => res.data),
+
+  getMe: (token: string) =>
+    api.get<User>('/auth/me', {
+      headers: { Authorization: `Bearer ${token}` },
+    }).then(res => res.data),
 };
