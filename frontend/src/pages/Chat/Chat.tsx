@@ -1,7 +1,7 @@
 import { useEffect, useState, useRef } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ArrowLeft, Send, Heart, MoreVertical, Sparkles, Volume2 } from 'lucide-react';
+import { ArrowLeft, Send, Heart, MoreVertical, Sparkles, Zap, X } from 'lucide-react';
 import { useChat } from '@/hooks/useChat';
 import { useCharacterStore } from '@/stores/characterStore';
 import AudioPlayer from '@/components/chat/AudioPlayer';
@@ -11,7 +11,7 @@ export default function Chat() {
   const navigate = useNavigate();
   const { characters, fetchCharacters } = useCharacterStore();
   const [inputValue, setInputValue] = useState('');
-  const [showEmoji, setShowEmoji] = useState(false);
+  const [showQuickReplies, setShowQuickReplies] = useState(false);
 
   const character = characters.find((c) => c.id === id);
   const { messages, loading, streaming, sendMessage, messagesEndRef } = useChat(id || null);
@@ -39,15 +39,36 @@ export default function Chat() {
     if (!inputValue.trim() || loading) return;
     await sendMessage(inputValue);
     setInputValue('');
+    setShowQuickReplies(false);
   };
 
-  const quickMessages = [
-    '今天过得怎么样？',
-    '想你啦~',
-    '有什么想和我说的吗？',
-    '聊聊你的爱好吧',
-    '给我讲个故事吧',
-  ];
+  const handleQuickReply = async (msg: string) => {
+    await sendMessage(msg);
+    setShowQuickReplies(false);
+  };
+
+  // 根据角色性格动态生成快捷回复
+  const getQuickReplies = () => {
+    const base = [
+      { text: '今天过得怎么样？', icon: '🌤️', label: '关心' },
+      { text: '想你啦~', icon: '💕', label: '表达想念' },
+      { text: '在干嘛呢？', icon: '❓', label: '询问' },
+      { text: '聊聊你的爱好', icon: '🎨', label: '话题' },
+      { text: '给我讲个故事', icon: '📖', label: '娱乐' },
+    ];
+
+    // 根据性格添加个性化快捷回复
+    if (character?.personality?.性格?.includes('温柔')) {
+      base.push({ text: '抱抱你', icon: '🤗', label: '亲密' });
+    }
+    if (character?.personality?.性格?.includes('活泼')) {
+      base.push({ text: '一起玩呀', icon: '🎉', label: '邀请' });
+    }
+
+    return base;
+  };
+
+  const quickReplies = getQuickReplies();
 
   if (!character) {
     return (
@@ -116,13 +137,13 @@ export default function Chat() {
 
               {/* 快捷消息 */}
               <div className="flex flex-wrap gap-2 justify-center max-w-md mx-auto">
-                {quickMessages.map((msg, index) => (
+                {quickReplies.map((reply, index) => (
                   <button
                     key={index}
-                    onClick={() => setInputValue(msg)}
-                    className="px-4 py-2 bg-white/10 rounded-full text-sm text-gray-300 hover:bg-white/20 transition-all"
+                    onClick={() => handleQuickReply(reply.text)}
+                    className="px-4 py-2 bg-white/10 rounded-full text-sm text-gray-300 hover:bg-white/20 hover:scale-105 transition-all"
                   >
-                    {msg}
+                    {reply.text}
                   </button>
                 ))}
               </div>
@@ -193,15 +214,55 @@ export default function Chat() {
       </div>
 
       {/* 输入区域 */}
-      <div className="glass border-t border-white/10 p-4">
-        <div className="flex items-center gap-2">
+      <div className="glass border-t border-white/10">
+        {/* 快捷回复展开区域 */}
+        <AnimatePresence>
+          {showQuickReplies && (
+            <motion.div
+              initial={{ height: 0, opacity: 0 }}
+              animate={{ height: 'auto', opacity: 1 }}
+              exit={{ height: 0, opacity: 0 }}
+              className="overflow-hidden"
+            >
+              <div className="p-4 border-t border-white/10">
+                <div className="flex items-center justify-between mb-3">
+                  <span className="text-sm text-gray-400">快捷回复</span>
+                  <button
+                    onClick={() => setShowQuickReplies(false)}
+                    className="p-1 hover:bg-white/10 rounded-lg transition-colors"
+                  >
+                    <X className="w-4 h-4 text-gray-400" />
+                  </button>
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  {quickReplies.map((reply, index) => (
+                    <button
+                      key={index}
+                      onClick={() => handleQuickReply(reply.text)}
+                      disabled={loading || streaming}
+                      className="px-3 py-2 bg-white/10 rounded-lg text-sm text-gray-300 hover:bg-white/20 hover:scale-105 transition-all disabled:opacity-50"
+                    >
+                      <span className="mr-1">{reply.icon}</span>
+                      {reply.text}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {/* 输入框 */}
+        <div className="flex items-center gap-2 p-4">
           <button
-            onClick={() => setShowEmoji(!showEmoji)}
-            className={`p-3 rounded-xl transition-colors ${
-              showEmoji ? 'bg-primary-500 text-white' : 'bg-white/10 text-gray-400 hover:bg-white/20'
+            onClick={() => setShowQuickReplies(!showQuickReplies)}
+            className={`p-3 rounded-xl transition-all ${
+              showQuickReplies
+                ? 'bg-gradient-to-r from-primary-500 to-pink-500 text-white'
+                : 'bg-white/10 text-gray-400 hover:bg-white/20'
             }`}
           >
-            <Heart className="w-5 h-5" />
+            <Zap className="w-5 h-5" />
           </button>
 
           <input
@@ -210,7 +271,7 @@ export default function Chat() {
             value={inputValue}
             onChange={(e) => setInputValue(e.target.value)}
             onKeyDown={(e) => e.key === 'Enter' && handleSend()}
-            className="flex-1"
+            className="flex-1 bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white placeholder-gray-500 focus:outline-none focus:border-primary-500 transition-colors"
           />
 
           <button
