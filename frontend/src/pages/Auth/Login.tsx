@@ -75,7 +75,7 @@ export default function Login() {
                     placeholder="请输入邮箱"
                     value={formData.email}
                     onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                    className="w-full pl-12"
+                    className="w-full pl-11 pr-4"
                     required={!isLogin}
                   />
                 </div>
@@ -91,7 +91,7 @@ export default function Login() {
                   placeholder="请输入用户名"
                   value={formData.username}
                   onChange={(e) => setFormData({ ...formData, username: e.target.value })}
-                  className="w-full pl-12"
+                  className="w-full pl-11 pr-4"
                   required
                 />
               </div>
@@ -106,7 +106,7 @@ export default function Login() {
                   placeholder="请输入密码"
                   value={formData.password}
                   onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-                  className="w-full pl-12"
+                  className="w-full pl-11 pr-4"
                   required
                 />
               </div>

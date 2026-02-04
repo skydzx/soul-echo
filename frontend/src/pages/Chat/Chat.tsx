@@ -4,6 +4,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { ArrowLeft, Send, MoreVertical, Zap, X, Image as ImageIcon, Mic } from 'lucide-react';
 import { useChat } from '@/hooks/useChat';
 import { useCharacterStore } from '@/stores/characterStore';
+import { useAuthStore } from '@/stores/authStore';
 import AudioPlayer from '@/components/chat/AudioPlayer';
 import ImageUploader from '@/components/chat/ImageUploader';
 import { chatApi } from '@/services/api';
@@ -12,6 +13,7 @@ export default function Chat() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { characters, fetchCharacters } = useCharacterStore();
+  const { isAuthenticated } = useAuthStore();
   const [inputValue, setInputValue] = useState('');
   const [showQuickReplies, setShowQuickReplies] = useState(false);
   const [selectedImages, setSelectedImages] = useState<string[]>([]);
@@ -21,6 +23,13 @@ export default function Chat() {
   const { messages, loading, streaming, sendMessage, messagesEndRef } = useChat(id || null);
 
   const API_BASE = import.meta.env.VITE_API_BASE_URL || '';
+
+  // 登录保护
+  useEffect(() => {
+    if (!isAuthenticated) {
+      navigate('/login');
+    }
+  }, [isAuthenticated, navigate]);
 
   useEffect(() => {
     if (!character) {

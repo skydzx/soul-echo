@@ -1,5 +1,5 @@
 import { useEffect } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Heart, Sparkles, Users, MessageCircle, LogIn } from 'lucide-react';
 import { useCharacterStore } from '@/stores/characterStore';
@@ -7,12 +7,21 @@ import { useAuthStore } from '@/stores/authStore';
 import CharacterCard from '@/components/character/CharacterCard';
 
 export default function Home() {
+  const navigate = useNavigate();
   const { characters, fetchCharacters, loading } = useCharacterStore();
   const { isAuthenticated } = useAuthStore();
 
   useEffect(() => {
     fetchCharacters();
   }, [fetchCharacters]);
+
+  const handleCreateClick = () => {
+    if (isAuthenticated) {
+      navigate('/create');
+    } else {
+      navigate('/login');
+    }
+  };
 
   const features = [
     {
@@ -70,12 +79,12 @@ export default function Home() {
             </p>
 
             <div className="flex flex-wrap gap-4 justify-center">
-              <Link
-                to="/create"
+              <button
+                onClick={handleCreateClick}
                 className="px-8 py-4 bg-gradient-to-r from-primary-500 to-pink-500 rounded-full text-white font-medium hover:shadow-xl hover:shadow-primary-500/30 transition-all hover:scale-105"
               >
                 开始创建
-              </Link>
+              </button>
               <a
                 href="#characters"
                 className="px-8 py-4 bg-white/10 backdrop-blur rounded-full text-white font-medium hover:bg-white/20 transition-all"

@@ -1,8 +1,9 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ArrowLeft, Sparkles, Heart, Wand2, RefreshCw } from 'lucide-react';
 import { useCharacterStore } from '@/stores/characterStore';
+import { useAuthStore } from '@/stores/authStore';
 import { generateApi } from '@/services/api';
 import Button from '@/components/ui/Button';
 
@@ -18,6 +19,14 @@ const RELATIONSHIP_OPTIONS = ['普通朋友', '知己', '暧昧对象', '恋人'
 export default function Create() {
   const navigate = useNavigate();
   const { createCharacter, loading } = useCharacterStore();
+  const { isAuthenticated } = useAuthStore();
+
+  // 登录保护
+  useEffect(() => {
+    if (!isAuthenticated) {
+      navigate('/login');
+    }
+  }, [isAuthenticated, navigate]);
 
   const [step, setStep] = useState(1);
   const [generating, setGenerating] = useState<'name' | 'appearance' | null>(null);
