@@ -1,9 +1,10 @@
 import { Outlet } from 'react-router-dom';
 import { Heart } from 'lucide-react';
+import ThemeSwitcher from './ThemeSwitcher';
 
 export default function Layout() {
   return (
-    <div className="min-h-screen bg-gradient-to-br from-dark-300 via-dark-200 to-dark-300">
+    <div className="min-h-screen">
       {/* 顶部导航 */}
       <header className="fixed top-0 left-0 right-0 z-50 glass">
         <div className="max-w-6xl mx-auto px-4 py-3 flex items-center justify-between">
@@ -17,6 +18,7 @@ export default function Layout() {
           </a>
 
           <nav className="flex items-center gap-4">
+            <ThemeSwitcher />
             <a href="/" className="text-gray-400 hover:text-white transition-colors text-sm font-medium">
               首页
             </a>
