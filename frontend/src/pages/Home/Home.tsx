@@ -87,7 +87,7 @@ export default function Home() {
               </button>
               <a
                 href="#characters"
-                className="px-8 py-4 bg-white/10 backdrop-blur rounded-full text-white font-medium hover:bg-white/20 transition-all"
+                className="px-8 py-4 text-white/80 font-medium hover:text-white hover:bg-white/5 rounded-full transition-all"
               >
                 查看角色
               </a>

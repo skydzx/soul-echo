@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { ArrowLeft, Heart, Mail, Lock, User, Sparkles } from 'lucide-react';
+import { ArrowLeft, Heart, Sparkles } from 'lucide-react';
 import { useAuthStore } from '@/stores/authStore';
 import { useThemeStore } from '@/stores/themeStore';
 import Button from '@/components/ui/Button';
@@ -118,48 +118,39 @@ export default function Login() {
             {!isLogin && (
               <div>
                 <label className={`block text-sm font-medium ${getLabelClass()} mb-2`}>邮箱</label>
-                <div className="relative">
-                  <Mail className={`absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 ${getGrayTextClass()}`} />
-                  <input
-                    type="email"
-                    placeholder="请输入邮箱"
-                    value={formData.email}
-                    onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                    className="w-full pl-12 pr-4"
-                    required={!isLogin}
-                  />
-                </div>
+                <input
+                  type="email"
+                  placeholder="请输入邮箱"
+                  value={formData.email}
+                  onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                  className="w-full"
+                  required={!isLogin}
+                />
               </div>
             )}
 
             <div>
               <label className={`block text-sm font-medium ${getLabelClass()} mb-2`}>用户名</label>
-              <div className="relative">
-                <User className={`absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 ${getGrayTextClass()}`} />
-                <input
-                  type="text"
-                  placeholder="请输入用户名"
-                  value={formData.username}
-                  onChange={(e) => setFormData({ ...formData, username: e.target.value })}
-                  className="w-full pl-12 pr-4"
-                  required
-                />
-              </div>
+              <input
+                type="text"
+                placeholder="请输入用户名"
+                value={formData.username}
+                onChange={(e) => setFormData({ ...formData, username: e.target.value })}
+                className="w-full"
+                required
+              />
             </div>
 
             <div>
               <label className={`block text-sm font-medium ${getLabelClass()} mb-2`}>密码</label>
-              <div className="relative">
-                <Lock className={`absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 ${getGrayTextClass()}`} />
-                <input
-                  type="password"
-                  placeholder="请输入密码"
-                  value={formData.password}
-                  onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-                  className="w-full pl-12 pr-4"
-                  required
-                />
-              </div>
+              <input
+                type="password"
+                placeholder="请输入密码"
+                value={formData.password}
+                onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                className="w-full"
+                required
+              />
             </div>
 
             {error && (
