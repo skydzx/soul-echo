@@ -3,11 +3,13 @@ import { useNavigate, Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { ArrowLeft, Heart, Mail, Lock, User, Sparkles } from 'lucide-react';
 import { useAuthStore } from '@/stores/authStore';
+import { useThemeStore } from '@/stores/themeStore';
 import Button from '@/components/ui/Button';
 
 export default function Login() {
   const navigate = useNavigate();
   const { login, loading } = useAuthStore();
+  const { theme } = useThemeStore();
   const [isLogin, setIsLogin] = useState(true);
   const [formData, setFormData] = useState({
     username: '',
@@ -15,6 +17,54 @@ export default function Login() {
     password: '',
   });
   const [error, setError] = useState('');
+
+  // 根据主题获取背景样式
+  const getBgClass = () => {
+    switch (theme) {
+      case 'light':
+        return 'bg-gradient-to-br from-gray-100 via-gray-200 to-gray-300';
+      case 'pink':
+        return 'bg-gradient-to-br from-pink-200 via-pink-300 to-rose-300';
+      default:
+        return 'bg-gradient-to-br from-dark-300 via-dark-200 to-dark-300';
+    }
+  };
+
+  // 根据主题获取文字颜色
+  const getTextClass = () => {
+    switch (theme) {
+      case 'light':
+        return 'text-gray-800';
+      case 'pink':
+        return 'text-pink-900';
+      default:
+        return 'text-white';
+    }
+  };
+
+  // 根据主题获取标签文字颜色
+  const getLabelClass = () => {
+    switch (theme) {
+      case 'light':
+        return 'text-gray-700';
+      case 'pink':
+        return 'text-pink-800';
+      default:
+        return 'text-gray-300';
+    }
+  };
+
+  // 根据主题获取灰色文字颜色
+  const getGrayTextClass = () => {
+    switch (theme) {
+      case 'light':
+        return 'text-gray-500';
+      case 'pink':
+        return 'text-pink-600';
+      default:
+        return 'text-gray-400';
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -34,7 +84,7 @@ export default function Login() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-dark-300 via-dark-200 to-dark-300 py-8 px-4">
+    <div className={`min-h-screen py-8 px-4 ${getBgClass()}`}>
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
@@ -43,7 +93,7 @@ export default function Login() {
         {/* 返回按钮 */}
         <Link
           to="/"
-          className="flex items-center gap-2 text-gray-400 hover:text-white mb-6 transition-colors"
+          className={`flex items-center gap-2 mb-6 transition-colors ${getGrayTextClass()} hover:${getTextClass()}`}
         >
           <ArrowLeft className="w-5 h-5" />
           <span>返回首页</span>
@@ -56,10 +106,10 @@ export default function Login() {
               <Heart className="w-8 h-8 text-white" />
             </div>
           </div>
-          <h1 className="text-3xl font-bold bg-gradient-to-r from-white via-pink-200 to-primary-300 bg-clip-text text-transparent">
+          <h1 className={`text-3xl font-bold bg-gradient-to-r ${theme === 'light' ? 'from-gray-700 via-gray-800 to-gray-900' : theme === 'pink' ? 'from-pink-600 via-pink-700 to-rose-600' : 'from-white via-pink-200 to-primary-300'} bg-clip-text text-transparent`}>
             SoulEcho
           </h1>
-          <p className="text-gray-400 mt-2">{isLogin ? '欢迎回来' : '创建你的账户'}</p>
+          <p className={`${getGrayTextClass()} mt-2`}>{isLogin ? '欢迎回来' : '创建你的账户'}</p>
         </div>
 
         {/* 表单 */}
@@ -67,9 +117,9 @@ export default function Login() {
           <form onSubmit={handleSubmit} className="space-y-4">
             {!isLogin && (
               <div>
-                <label className="block text-sm font-medium text-gray-300 mb-2">邮箱</label>
+                <label className={`block text-sm font-medium ${getLabelClass()} mb-2`}>邮箱</label>
                 <div className="relative">
-                  <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+                  <Mail className={`absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 ${getGrayTextClass()}`} />
                   <input
                     type="email"
                     placeholder="请输入邮箱"
@@ -83,9 +133,9 @@ export default function Login() {
             )}
 
             <div>
-              <label className="block text-sm font-medium text-gray-300 mb-2">用户名</label>
+              <label className={`block text-sm font-medium ${getLabelClass()} mb-2`}>用户名</label>
               <div className="relative">
-                <User className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+                <User className={`absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 ${getGrayTextClass()}`} />
                 <input
                   type="text"
                   placeholder="请输入用户名"
@@ -98,9 +148,9 @@ export default function Login() {
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-300 mb-2">密码</label>
+              <label className={`block text-sm font-medium ${getLabelClass()} mb-2`}>密码</label>
               <div className="relative">
-                <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+                <Lock className={`absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 ${getGrayTextClass()}`} />
                 <input
                   type="password"
                   placeholder="请输入密码"
@@ -125,7 +175,7 @@ export default function Login() {
 
           {/* 切换登录/注册 */}
           <div className="mt-6 text-center">
-            <p className="text-gray-400">
+            <p className={getGrayTextClass()}>
               {isLogin ? '还没有账户？' : '已有账户？'}
               <button
                 onClick={() => {
