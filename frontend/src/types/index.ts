@@ -23,6 +23,7 @@ export interface ChatMessage {
   role: 'user' | 'assistant' | 'system';
   content: string;
   timestamp?: string;
+  images?: string[];  // 图片/表情包列表
 }
 
 export interface Memory {

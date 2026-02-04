@@ -17,9 +17,25 @@ export const characterApi = {
 };
 
 // 对话相关 API
+export interface MultimodalChatRequest {
+  character_id: string;
+  message: string;
+  images?: string[];
+  stream?: boolean;
+}
+
+export interface MultimodalChatResponse {
+  character_id: string;
+  response: string;
+  timestamp: string;
+  images?: string[];
+}
+
 export const chatApi = {
   send: (data: ChatRequest) => api.post<ChatResponse>('/chat', data).then(res => res.data),
   getHistory: (characterId: string) => api.get(`/chat/history/${characterId}`).then(res => res.data),
+  sendMultimodal: (data: MultimodalChatRequest) =>
+    api.post<MultimodalChatResponse>('/chat/multimodal', data).then(res => res.data),
 };
 
 // TTS 语音相关 API
@@ -45,6 +61,21 @@ export const avatarApi = {
   },
   delete: (characterId: string) =>
     api.delete(`/characters/${characterId}/avatar`).then(res => res.data),
+};
+
+// 图片相关 API
+export const imageApi = {
+  upload: (characterId: string, file: File) => {
+    const formData = new FormData();
+    formData.append('file', file);
+    return api.post(`/characters/${characterId}/images`, formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    }).then(res => res.data);
+  },
+  delete: (characterId: string, filename: string) =>
+    api.delete(`/characters/${characterId}/images/${filename}`).then(res => res.data),
+  getAll: (characterId: string) =>
+    api.get<{ images: { url: string; filename: string }[] }>(`/characters/${characterId}/images`).then(res => res.data),
 };
 
 // 记忆相关 API
