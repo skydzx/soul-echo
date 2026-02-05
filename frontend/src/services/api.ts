@@ -10,12 +10,12 @@ const api = axios.create({
 
 // 添加 token 到请求
 api.interceptors.request.use((config) => {
-  const token = localStorage.getItem('auth-storage');
-  if (token) {
+  const data = localStorage.getItem('soul-auth');
+  if (data) {
     try {
-      const parsed = JSON.parse(token);
-      if (parsed.state?.token) {
-        config.headers.Authorization = `Bearer ${parsed.state.token}`;
+      const parsed = JSON.parse(data);
+      if (parsed.token) {
+        config.headers.Authorization = `Bearer ${parsed.token}`;
       }
     } catch {
       // ignore

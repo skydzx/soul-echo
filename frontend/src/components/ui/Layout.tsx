@@ -10,10 +10,49 @@ export default function Layout() {
   const { user, isAuthenticated, logout, checkAuth } = useAuthStore();
   const [showUserMenu, setShowUserMenu] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
+  const [mounted, setMounted] = useState(false);
 
+  // 初始化时从 localStorage 同步状态
   useEffect(() => {
-    checkAuth();
+    const initAuth = async () => {
+      const data = localStorage.getItem('soul-auth');
+      if (data) {
+        try {
+          const parsed = JSON.parse(data);
+          if (parsed.token && parsed.user) {
+            await checkAuth();
+          }
+        } catch {
+          console.error('Failed to parse auth data');
+        }
+      }
+      setMounted(true);
+    };
+    initAuth();
   }, []);
+
+  // 未挂载时不渲染导航内容，避免闪烁
+  if (!mounted) {
+    return (
+      <div className="min-h-screen bg-dark-300">
+        <header className="fixed top-0 left-0 right-0 z-50 glass">
+          <div className="max-w-6xl mx-auto px-4 py-3 flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <div className="p-2 bg-gradient-to-br from-primary-500 to-primary-700 rounded-xl">
+                <Heart className="w-5 h-5 text-white" />
+              </div>
+              <span className="text-xl font-bold bg-gradient-to-r from-primary-400 to-pink-400 bg-clip-text text-transparent">
+                SoulEcho
+              </span>
+            </div>
+          </div>
+        </header>
+        <main className="pt-16 min-h-screen">
+          <Outlet />
+        </main>
+      </div>
+    );
+  }
 
   // 点击外部关闭菜单
   useEffect(() => {

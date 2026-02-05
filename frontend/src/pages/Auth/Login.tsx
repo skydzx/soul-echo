@@ -8,7 +8,7 @@ import Button from '@/components/ui/Button';
 
 export default function Login() {
   const navigate = useNavigate();
-  const { login, loading } = useAuthStore();
+  const { login, register, loading } = useAuthStore();
   const { theme } = useThemeStore();
   const [isLogin, setIsLogin] = useState(true);
   const [formData, setFormData] = useState({
@@ -74,7 +74,7 @@ export default function Login() {
       if (isLogin) {
         await login(formData.username, formData.password);
       } else {
-        await useAuthStore.getState().register(formData.username, formData.email, formData.password);
+        await register(formData.username, formData.email, formData.password);
       }
       navigate('/');
     } catch (err: any) {
