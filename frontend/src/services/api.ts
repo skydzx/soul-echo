@@ -14,8 +14,11 @@ api.interceptors.request.use((config) => {
   if (data) {
     try {
       const parsed = JSON.parse(data);
-      if (parsed.token) {
-        config.headers.Authorization = `Bearer ${parsed.token}`;
+      // zustand persist format: {"state":{"token":...}, "version":0}
+      // direct format: {"token":...}
+      const token = parsed.state?.token || parsed.token;
+      if (token) {
+        config.headers.Authorization = `Bearer ${token}`;
       }
     } catch {
       // ignore
