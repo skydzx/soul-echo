@@ -15,30 +15,31 @@ interface AuthState {
 }
 
 const saveAuth = (user: User, token: string) => {
-  localStorage.setItem('soul-auth', JSON.stringify({ user, token }));
+  const data = JSON.stringify({ user, token });
+  localStorage.setItem('soul-auth', data);
 };
 
 const clearAuth = () => {
   localStorage.removeItem('soul-auth');
 };
 
-// 从 localStorage 读取认证状态
+// 从存储读取认证状态
 const getInitialAuth = () => {
   if (typeof window === 'undefined') {
     return { user: null, token: null, isAuthenticated: false };
   }
-  try {
-    const data = localStorage.getItem('soul-auth');
-    if (data) {
+  const data = localStorage.getItem('soul-auth');
+  if (data) {
+    try {
       const parsed = JSON.parse(data);
       return {
         user: parsed.user || null,
         token: parsed.token || null,
         isAuthenticated: !!parsed.token,
       };
+    } catch {
+      // ignore
     }
-  } catch {
-    // ignore
   }
   return { user: null, token: null, isAuthenticated: false };
 };
