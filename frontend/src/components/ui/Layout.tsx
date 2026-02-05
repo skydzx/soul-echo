@@ -1,6 +1,6 @@
 import { Outlet, Link, useNavigate } from 'react-router-dom';
-import { Heart, User, LogOut, ChevronDown } from 'lucide-react';
-import { useState, useEffect } from 'react';
+import { Heart, User, LogOut, User as UserIcon, Settings, Plus } from 'lucide-react';
+import { useState, useEffect, useRef } from 'react';
 import ThemeSwitcher from './ThemeSwitcher';
 import { useAuthStore } from '@/stores/authStore';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -9,15 +9,32 @@ export default function Layout() {
   const navigate = useNavigate();
   const { user, isAuthenticated, logout, checkAuth } = useAuthStore();
   const [showUserMenu, setShowUserMenu] = useState(false);
+  const menuRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     checkAuth();
+  }, []);
+
+  // 点击外部关闭菜单
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
+        setShowUserMenu(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
   const handleLogout = () => {
     logout();
     navigate('/');
     setShowUserMenu(false);
+  };
+
+  // 获取用户首字母作为头像
+  const getInitial = () => {
+    return user?.username?.charAt(0).toUpperCase() || 'U';
   };
 
   return (
@@ -38,40 +55,75 @@ export default function Layout() {
             <ThemeSwitcher />
 
             {isAuthenticated ? (
-              <div className="relative">
+              <div className="relative" ref={menuRef}>
+                {/* 用户头像按钮 */}
                 <button
                   onClick={() => setShowUserMenu(!showUserMenu)}
-                  className="flex items-center gap-2 px-3 py-2 bg-white/10 rounded-full hover:bg-white/20 transition-all"
+                  className={`flex items-center gap-2 px-2 py-1.5 rounded-full transition-all ${
+                    showUserMenu ? 'bg-white/20' : 'hover:bg-white/10'
+                  }`}
                 >
-                  <div className="w-8 h-8 bg-gradient-to-br from-primary-400 to-pink-400 rounded-full flex items-center justify-center">
-                    <User className="w-4 h-4 text-white" />
+                  <div className="w-8 h-8 bg-gradient-to-br from-primary-400 to-pink-400 rounded-full flex items-center justify-center shadow-lg">
+                    <span className="text-white text-sm font-semibold">{getInitial()}</span>
                   </div>
-                  <span className="text-white text-sm font-medium">{user?.username}</span>
-                  <ChevronDown className="w-4 h-4 text-gray-400" />
+                  <ChevronDown className={`w-4 h-4 text-gray-300 transition-transform ${showUserMenu ? 'rotate-180' : ''}`} />
                 </button>
 
+                {/* 下拉菜单 */}
                 <AnimatePresence>
                   {showUserMenu && (
                     <motion.div
-                      initial={{ opacity: 0, y: 10 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      exit={{ opacity: 0, y: 10 }}
-                      className="absolute right-0 mt-2 w-48 glass rounded-xl py-2 shadow-xl overflow-hidden"
+                      ref={menuRef}
+                      initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                      animate={{ opacity: 1, y: 0, scale: 1 }}
+                      exit={{ opacity: 0, y: 10, scale: 0.95 }}
+                      transition={{ duration: 0.15 }}
+                      className="absolute right-0 mt-2 w-56 glass rounded-2xl shadow-2xl overflow-hidden"
                     >
-                      <Link
-                        to="/create"
-                        onClick={() => setShowUserMenu(false)}
-                        className="block px-4 py-2 text-gray-300 hover:bg-white/10 transition-colors"
-                      >
-                        + 创建角色
-                      </Link>
-                      <button
-                        onClick={handleLogout}
-                        className="w-full text-left px-4 py-2 text-red-400 hover:bg-white/10 transition-colors flex items-center gap-2"
-                      >
-                        <LogOut className="w-4 h-4" />
-                        退出登录
-                      </button>
+                      {/* 用户信息 */}
+                      <div className="px-4 py-3 border-b border-white/10">
+                        <p className="text-white font-medium">{user?.username}</p>
+                        <p className="text-gray-400 text-xs mt-0.5">{user?.email}</p>
+                      </div>
+
+                      {/* 菜单项 */}
+                      <div className="py-2">
+                        <Link
+                          to="/create"
+                          onClick={() => setShowUserMenu(false)}
+                          className="flex items-center gap-3 px-4 py-2.5 text-gray-300 hover:bg-white/10 hover:text-white transition-colors"
+                        >
+                          <Plus className="w-4 h-4 text-primary-400" />
+                          <span>创建角色</span>
+                        </Link>
+                        <Link
+                          to="/profile/self"
+                          onClick={() => setShowUserMenu(false)}
+                          className="flex items-center gap-3 px-4 py-2.5 text-gray-300 hover:bg-white/10 hover:text-white transition-colors"
+                        >
+                          <UserIcon className="w-4 h-4 text-blue-400" />
+                          <span>个人中心</span>
+                        </Link>
+                        <Link
+                          to="/settings"
+                          onClick={() => setShowUserMenu(false)}
+                          className="flex items-center gap-3 px-4 py-2.5 text-gray-300 hover:bg-white/10 hover:text-white transition-colors"
+                        >
+                          <Settings className="w-4 h-4 text-gray-400" />
+                          <span>账号设置</span>
+                        </Link>
+                      </div>
+
+                      {/* 退出登录 */}
+                      <div className="py-2 border-t border-white/10">
+                        <button
+                          onClick={handleLogout}
+                          className="flex items-center gap-3 w-full px-4 py-2.5 text-red-400 hover:bg-red-500/10 transition-colors"
+                        >
+                          <LogOut className="w-4 h-4" />
+                          <span>退出登录</span>
+                        </button>
+                      </div>
                     </motion.div>
                   )}
                 </AnimatePresence>
@@ -79,7 +131,7 @@ export default function Layout() {
             ) : (
               <Link
                 to="/login"
-                className="px-4 py-2 bg-gradient-to-r from-primary-500 to-pink-500 rounded-full text-white text-sm font-medium hover:shadow-lg hover:shadow-primary-500/30 transition-all"
+                className="px-5 py-2 bg-gradient-to-r from-primary-500 to-pink-500 rounded-full text-white text-sm font-medium hover:shadow-lg hover:shadow-primary-500/30 hover:scale-105 transition-all"
               >
                 登录
               </Link>
@@ -93,5 +145,20 @@ export default function Layout() {
         <Outlet />
       </main>
     </div>
+  );
+}
+
+// ChevronDown 组件
+function ChevronDown({ className }: { className?: string }) {
+  return (
+    <svg
+      className={className}
+      fill="none"
+      viewBox="0 0 24 24"
+      stroke="currentColor"
+      strokeWidth={2}
+    >
+      <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+    </svg>
   );
 }
