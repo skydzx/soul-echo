@@ -1,7 +1,7 @@
 import { useEffect, useState, useRef, useCallback } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ArrowLeft, Send, MoreVertical, Zap, X, Image as ImageIcon, Mic, Search, Download, Trash2, ChevronDown } from 'lucide-react';
+import { ArrowLeft, Send, MoreVertical, Zap, X, Image as ImageIcon, Mic, Search, Download, Trash2, ChevronDown, Brain } from 'lucide-react';
 import { useChat } from '@/hooks/useChat';
 import { useCharacterStore } from '@/stores/characterStore';
 import { useAuthStore } from '@/stores/authStore';
@@ -257,6 +257,15 @@ export default function Chat() {
         >
           <Search className="w-5 h-5" />
         </button>
+
+        {/* 记忆管理按钮 */}
+        <Link
+          to={`/memories/${id}`}
+          className="p-2 hover:bg-white/10 rounded-full transition-colors text-gray-400"
+          title="记忆管理"
+        >
+          <Brain className="w-5 h-5" />
+        </Link>
 
         {/* 导出按钮 */}
         <button

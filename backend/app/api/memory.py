@@ -137,3 +137,57 @@ async def get_memory_count(character_id: str):
         return {"count": count}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/characters/{character_id}/memories/consolidate")
+async def consolidate_memories(character_id: str):
+    """合并相似记忆，清理冗余"""
+    try:
+        from app.services.memory import get_memory_service, consolidate_memories
+
+        memory_service = get_memory_service()
+
+        # 获取合并前后的数量
+        before_count = memory_service.get_memory_count(character_id)
+        deleted_count = consolidate_memories(character_id)
+        after_count = memory_service.get_memory_count(character_id)
+
+        return {
+            "message": f"已合并 {deleted_count} 条相似记忆",
+            "before_count": before_count,
+            "after_count": after_count,
+            "deleted_count": deleted_count
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/characters/{character_id}/memories/all")
+async def get_all_memories(character_id: str, limit: int = 100):
+    """获取所有记忆（包括低重要性的）"""
+    try:
+        from app.services.memory import get_memory_service
+
+        memory_service = get_memory_service()
+        collection = memory_service.get_collection(character_id)
+
+        results = collection.get(limit=limit)
+
+        memories = []
+        if results['documents'] and len(results['documents']) > 0:
+            for i, doc in enumerate(results['documents']):
+                memories.append({
+                    "id": results['ids'][i],
+                    "content": doc,
+                    "metadata": results['metadatas'][i] if results['metadatas'][i] else {}
+                })
+
+        # 按重要性排序
+        memories.sort(key=lambda x: x['metadata'].get('importance', 0), reverse=True)
+
+        return {
+            "count": len(memories),
+            "memories": memories
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))

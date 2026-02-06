@@ -5,6 +5,7 @@ import Create from '@/pages/Create/Create';
 import Chat from '@/pages/Chat/Chat';
 import Profile from '@/pages/Profile/Profile';
 import Login from '@/pages/Auth/Login';
+import Memories from '@/pages/Memories/Memories';
 
 function App() {
   return (
@@ -14,6 +15,7 @@ function App() {
         <Route path="create" element={<Create />} />
         <Route path="chat/:id" element={<Chat />} />
         <Route path="profile/:id" element={<Profile />} />
+        <Route path="memories/:id" element={<Memories />} />
       </Route>
       <Route path="/login" element={<Login />} />
     </Routes>
