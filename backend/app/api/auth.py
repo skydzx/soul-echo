@@ -1,4 +1,4 @@
-from fastapi import APIRouter, HTTPException, Depends, Header
+from fastapi import APIRouter, HTTPException, Depends, Header, Request
 from pydantic import BaseModel
 from typing import Optional
 from uuid import uuid4
@@ -10,8 +10,12 @@ import json
 
 router = APIRouter()
 
-# 数据存储
-DATA_DIR = "data"
+# 数据存储 - 使用绝对路径
+# __file__ = D:/PycharmProjects/SoulEcho/backend/app/api/auth.py
+# 需要向上找3级到项目根目录
+APP_DIR = os.path.dirname(os.path.abspath(__file__))  # D:/PycharmProjects/SoulEcho/backend/app/api
+BACKEND_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))  # D:/PycharmProjects/SoulEcho/backend
+DATA_DIR = os.path.join(BACKEND_DIR, "data")
 os.makedirs(DATA_DIR, exist_ok=True)
 USERS_FILE = os.path.join(DATA_DIR, "users.json")
 
@@ -146,8 +150,9 @@ async def login(credentials: UserLogin):
 
 
 @router.get("/auth/me", response_model=UserResponse)
-async def get_current_user(authorization: Optional[str] = None):
+async def get_current_user(request: Request):
     """获取当前用户信息（需要认证）"""
+    authorization = request.headers.get("Authorization") or request.headers.get("authorization")
     if not authorization or not authorization.startswith("Bearer "):
         raise HTTPException(status_code=401, detail="未登录")
 

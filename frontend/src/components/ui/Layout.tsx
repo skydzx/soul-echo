@@ -1,6 +1,6 @@
 import { Outlet, Link, useNavigate } from 'react-router-dom';
 import { Heart, LogOut, User as UserIcon, Settings, Plus } from 'lucide-react';
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useId } from 'react';
 import ThemeSwitcher from './ThemeSwitcher';
 import { useAuthStore } from '@/stores/authStore';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -10,16 +10,15 @@ export default function Layout() {
   const { user, isAuthenticated, logout, checkAuth } = useAuthStore();
   const [showUserMenu, setShowUserMenu] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
+  const menuId = useId();
 
   // 初始化时从 localStorage 读取状态并验证 token
   useEffect(() => {
-    // 强制重新读取 localStorage 状态
     const data = localStorage.getItem('soul-auth');
     if (data) {
       try {
         const parsed = JSON.parse(data);
         if (parsed.user && parsed.token) {
-          // 更新 store 状态
           useAuthStore.setState({
             user: parsed.user,
             token: parsed.token,
@@ -36,7 +35,8 @@ export default function Layout() {
   // 点击外部关闭菜单
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
-      if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
+      const menu = menuRef.current;
+      if (menu && !menu.contains(event.target as Node)) {
         setShowUserMenu(false);
       }
     };
@@ -91,7 +91,7 @@ export default function Layout() {
                 <AnimatePresence>
                   {showUserMenu && (
                     <motion.div
-                      ref={menuRef}
+                      id={menuId}
                       initial={{ opacity: 0, y: 10, scale: 0.95 }}
                       animate={{ opacity: 1, y: 0, scale: 1 }}
                       exit={{ opacity: 0, y: 10, scale: 0.95 }}
