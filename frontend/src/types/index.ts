@@ -36,6 +36,7 @@ export interface CreateCharacterRequest {
   gender: string;
   age: number;
   appearance: string;
+  avatar?: string; // 头像 URL
   personality: {
     性格: string;
     说话风格: string;

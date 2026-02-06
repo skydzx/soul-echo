@@ -1,10 +1,10 @@
-import { useState, useEffect } from 'react';
+import { useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ArrowLeft, Sparkles, Heart, Wand2, RefreshCw } from 'lucide-react';
+import { ArrowLeft, Sparkles, Heart, Wand2, RefreshCw, Upload, X, User } from 'lucide-react';
 import { useCharacterStore } from '@/stores/characterStore';
 import { useAuthStore } from '@/stores/authStore';
-import { generateApi } from '@/services/api';
+import { generateApi, avatarApi } from '@/services/api';
 import Button from '@/components/ui/Button';
 
 const PERSONALITY_OPTIONS = {
@@ -19,25 +19,29 @@ const RELATIONSHIP_OPTIONS = ['普通朋友', '知己', '暧昧对象', '恋人'
 export default function Create() {
   const navigate = useNavigate();
   const { createCharacter, loading } = useCharacterStore();
-  const { isAuthenticated } = useAuthStore();
+  const { isAuthenticated, token } = useAuthStore();
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   // 登录保护
-  useEffect(() => {
-    if (!isAuthenticated) {
-      navigate('/login');
-    }
-  }, [isAuthenticated, navigate]);
+  if (!isAuthenticated) {
+    navigate('/login');
+    return null;
+  }
 
   const [step, setStep] = useState(1);
   const [generating, setGenerating] = useState<'name' | 'appearance' | null>(null);
   const [showNameSuggestions, setShowNameSuggestions] = useState(false);
   const [nameSuggestions, setNameSuggestions] = useState<{ name: string; reason: string }[]>([]);
+  const [uploadingAvatar, setUploadingAvatar] = useState(false);
+  const [errors, setErrors] = useState<Record<string, string>>({});
 
   const [formData, setFormData] = useState({
     name: '',
     gender: '女性',
     age: 22,
     appearance: '',
+    avatar: null as File | null,
+    avatarPreview: null as string | null,
     personality: {
       性格: '温柔体贴',
       说话风格: '温柔型',
@@ -66,14 +70,114 @@ export default function Create() {
     });
   };
 
+  // 表单验证
+  const validateStep = (currentStep: number): boolean => {
+    const newErrors: Record<string, string> = {};
+
+    if (currentStep === 1) {
+      if (!formData.name.trim()) {
+        newErrors.name = '请输入角色姓名';
+      } else if (formData.name.trim().length < 2) {
+        newErrors.name = '姓名至少2个字符';
+      } else if (!/^[\u4e00-\u9fa5a-zA-Z0-9]+$/.test(formData.name.trim())) {
+        newErrors.name = '姓名只能包含中文、英文字母和数字';
+      }
+    }
+
+    if (currentStep === 3) {
+      if (!formData.background.trim()) {
+        newErrors.background = '请填写背景故事';
+      } else if (formData.background.trim().length < 10) {
+        newErrors.background = '背景故事至少需要10个字符';
+      }
+    }
+
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
+
+  // 头像上传
+  const handleAvatarChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    // 验证文件类型
+    const validTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
+    if (!validTypes.includes(file.type)) {
+      setErrors({ ...errors, avatar: '请选择 JPG、PNG、GIF 或 WebP 格式的图片' });
+      return;
+    }
+
+    // 验证文件大小 (最大 2MB)
+    if (file.size > 2 * 1024 * 1024) {
+      setErrors({ ...errors, avatar: '图片大小不能超过 2MB' });
+      return;
+    }
+
+    // 创建预览
+    const reader = new FileReader();
+    reader.onload = () => {
+      setFormData({
+        ...formData,
+        avatar: file,
+        avatarPreview: reader.result as string,
+      });
+      // 清除错误
+      const { avatar, ...rest } = errors;
+      setErrors(rest);
+    };
+    reader.readAsDataURL(file);
+  };
+
+  // 移除头像
+  const removeAvatar = () => {
+    setFormData({
+      ...formData,
+      avatar: null,
+      avatarPreview: null,
+    });
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
+  };
+
   const handleSubmit = async () => {
-    if (!formData.name.trim()) return;
+    if (!validateStep(1) || !validateStep(3)) return;
 
     try {
-      const character = await createCharacter(formData);
+      // 如果有头像，先上传头像再创建角色
+      let avatarUrl = '';
+      if (formData.avatar && token) {
+        setUploadingAvatar(true);
+        try {
+          const avatarData = await avatarApi.uploadWithToken(formData.avatar, token);
+          avatarUrl = avatarData.url;
+        } catch (uploadError) {
+          console.error('头像上传失败:', uploadError);
+          // 继续创建角色，不强制要求头像
+        } finally {
+          setUploadingAvatar(false);
+        }
+      }
+
+      const characterData = {
+        name: formData.name,
+        gender: formData.gender,
+        age: formData.age,
+        appearance: formData.appearance,
+        avatar: avatarUrl,
+        personality: formData.personality,
+        hobbies: formData.hobbies,
+        background: formData.background,
+        relationship_type: formData.relationship_type,
+        preferences: formData.preferences,
+      };
+
+      const character = await createCharacter(characterData);
       navigate(`/chat/${character.id}`);
     } catch (error) {
       console.error('创建失败:', error);
+      setErrors({ ...errors, submit: '创建失败，请稍后重试' });
     }
   };
 
@@ -131,15 +235,61 @@ export default function Create() {
       </div>
 
       <div className="space-y-4">
+        {/* 头像上传 */}
+        <div className="flex flex-col items-center mb-6">
+          <div className="relative">
+            {formData.avatarPreview ? (
+              <div className="relative">
+                <img
+                  src={formData.avatarPreview}
+                  alt="角色头像"
+                  className="w-24 h-24 rounded-full object-cover border-4 border-primary-500/30"
+                />
+                <button
+                  onClick={removeAvatar}
+                  className="absolute -top-2 -right-2 w-8 h-8 bg-red-500 rounded-full flex items-center justify-center text-white hover:bg-red-600 transition-colors"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+            ) : (
+              <div
+                onClick={() => fileInputRef.current?.click()}
+                className="w-24 h-24 rounded-full border-4 border-dashed border-white/20 flex flex-col items-center justify-center cursor-pointer hover:border-primary-400 hover:bg-white/5 transition-all group"
+              >
+                <Upload className="w-8 h-8 text-gray-400 group-hover:text-primary-400 transition-colors" />
+                <span className="text-xs text-gray-400 mt-1 group-hover:text-primary-400">上传头像</span>
+              </div>
+            )}
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/*"
+              onChange={handleAvatarChange}
+              className="hidden"
+            />
+          </div>
+          {errors.avatar && (
+            <p className="text-red-400 text-xs mt-2">{errors.avatar}</p>
+          )}
+          <p className="text-gray-500 text-xs mt-2">支持 JPG、PNG、GIF，最大 2MB</p>
+        </div>
+
         <div>
-          <label className="block text-sm font-medium text-gray-300 mb-2">姓名</label>
+          <label className="block text-sm font-medium text-gray-300 mb-2">姓名 <span className="text-red-400">*</span></label>
           <div className="relative">
             <input
               type="text"
               placeholder="给她/他起个名字"
               value={formData.name}
-              onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-              className="w-full pr-24"
+              onChange={(e) => {
+                setFormData({ ...formData, name: e.target.value });
+                if (errors.name) {
+                  const { name, ...rest } = errors;
+                  setErrors(rest);
+                }
+              }}
+              className={`w-full pr-24 ${errors.name ? 'border-red-500 focus:border-red-500' : ''}`}
             />
             <button
               type="button"
@@ -155,6 +305,9 @@ export default function Create() {
               AI推荐
             </button>
           </div>
+          {errors.name && (
+            <p className="text-red-400 text-xs mt-1">{errors.name}</p>
+          )}
 
           {/* AI 名字建议弹窗 */}
           <AnimatePresence>
@@ -417,24 +570,32 @@ export default function Create() {
           {step === 3 && renderStep3()}
 
           {/* 底部按钮 */}
+          {errors.submit && (
+            <div className="mb-4 p-3 bg-red-500/10 border border-red-500/20 rounded-lg">
+              <p className="text-red-400 text-sm text-center">{errors.submit}</p>
+            </div>
+          )}
           <div className="flex gap-4 mt-8">
             {step < 3 ? (
               <Button
-                onClick={() => setStep(step + 1)}
+                onClick={() => {
+                  if (validateStep(step)) {
+                    setStep(step + 1);
+                  }
+                }}
                 className="flex-1"
-                disabled={step === 1 && !formData.name.trim()}
               >
                 下一步
               </Button>
             ) : (
               <Button
                 onClick={handleSubmit}
-                loading={loading}
+                loading={loading || uploadingAvatar}
                 className="flex-1"
-                disabled={!formData.name.trim()}
+                disabled={!formData.name.trim() || uploadingAvatar}
               >
                 <Sparkles className="w-4 h-4 mr-2" />
-                创建角色
+                {uploadingAvatar ? '上传头像中...' : '创建角色'}
               </Button>
             )}
           </div>

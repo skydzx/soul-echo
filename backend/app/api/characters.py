@@ -41,6 +41,7 @@ class CharacterCreate(BaseModel):
     gender: str = "女性"
     age: int = 22
     appearance: str = ""
+    avatar: Optional[str] = None  # 头像 URL
     personality: PersonalityModel = PersonalityModel()
     hobbies: List[str] = []
     background: str = ""
@@ -54,12 +55,12 @@ class CharacterResponse(BaseModel):
     gender: str
     age: int
     appearance: str
+    avatar: Optional[str] = None
     personality: Dict
     hobbies: List[str]
     background: str
     relationship_type: str
     created_at: str
-    avatar: Optional[str] = None
 
 
 @router.get("/characters")
@@ -92,6 +93,7 @@ async def create_character(character: CharacterCreate) -> CharacterResponse:
         "gender": character.gender,
         "age": character.age,
         "appearance": character.appearance,
+        "avatar": character.avatar,
         "personality": character.personality.model_dump(),
         "hobbies": character.hobbies,
         "background": character.background,

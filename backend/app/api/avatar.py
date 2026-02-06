@@ -23,6 +23,53 @@ class AvatarResponse(BaseModel):
     message: str
 
 
+@router.post("/characters/avatar/upload")
+async def upload_avatar_before_create(
+    file: UploadFile = File(...)
+):
+    """创建角色前上传头像（返回临时URL）"""
+    # 验证文件类型
+    if file.content_type not in ALLOWED_TYPES:
+        raise HTTPException(
+            status_code=400,
+            detail="不支持的图片格式，请使用 JPEG、PNG、GIF 或 WebP"
+        )
+
+    # 验证文件大小（2MB）
+    MAX_SIZE = 2 * 1024 * 1024
+    content = await file.read()
+    if len(content) > MAX_SIZE:
+        raise HTTPException(
+            status_code=400,
+            detail="图片大小不能超过 2MB"
+        )
+
+    # 生成临时文件名
+    temp_id = uuid.uuid4().hex[:12]
+    ext = file.content_type.split('/')[-1]
+    if ext == 'jpeg':
+        ext = 'jpg'
+
+    filename = f"temp_{temp_id}.{ext}"
+    filepath = os.path.join(AVATAR_DIR, filename)
+
+    # 保存文件
+    with open(filepath, 'wb') as f:
+        f.write(content)
+
+    # 调整头像大小
+    resize_avatar(filepath)
+
+    # 返回临时URL（用于创建角色时关联）
+    temp_url = f"/avatars/{filename}"
+
+    return {
+        "url": temp_url,
+        "temp_id": temp_id,
+        "message": "头像上传成功"
+    }
+
+
 def resize_avatar(image_path: str, size: tuple = (200, 200)):
     """调整头像尺寸"""
     try:

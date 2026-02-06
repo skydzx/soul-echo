@@ -78,6 +78,17 @@ export const avatarApi = {
       headers: { 'Content-Type': 'multipart/form-data' },
     }).then(res => res.data);
   },
+  // 带 token 的上传函数（用于创建角色时）
+  uploadWithToken: (file: File, token: string) => {
+    const formData = new FormData();
+    formData.append('file', file);
+    return api.post('/characters/avatar/upload', formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+        Authorization: `Bearer ${token}`,
+      },
+    }).then(res => res.data);
+  },
   delete: (characterId: string) =>
     api.delete(`/characters/${characterId}/avatar`).then(res => res.data),
 };
