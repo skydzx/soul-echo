@@ -1,12 +1,14 @@
 import { useEffect, useState, useRef, useCallback } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ArrowLeft, Send, MoreVertical, Zap, X, Image as ImageIcon, Mic, Search, Download, Trash2, ChevronDown, Brain } from 'lucide-react';
+import { ArrowLeft, Send, MoreVertical, Zap, X, Image as ImageIcon, Mic, Search, Download, Trash2, ChevronDown, Brain, Volume2 } from 'lucide-react';
 import { useChat } from '@/hooks/useChat';
 import { useCharacterStore } from '@/stores/characterStore';
 import { useAuthStore } from '@/stores/authStore';
 import AudioPlayer from '@/components/chat/AudioPlayer';
 import ImageUploader from '@/components/chat/ImageUploader';
+import VoiceSettings from '@/components/chat/VoiceSettings';
+import VoiceInput from '@/components/chat/VoiceInput';
 import { chatApi } from '@/services/api';
 
 export default function Chat() {
@@ -23,6 +25,9 @@ export default function Chat() {
   const [searchResults, setSearchResults] = useState<any[]>([]);
   const [showStats, setShowStats] = useState(false);
   const [chatStats, setChatStats] = useState<any>(null);
+  const [showVoiceSettings, setShowVoiceSettings] = useState(false);
+  const [showVoiceInput, setShowVoiceInput] = useState(false);
+  const [autoPlayVoice, setAutoPlayVoice] = useState(false);
 
   const character = characters.find((c) => c.id === id);
   const { messages, loading, loadingMore, streaming, sendMessage, messagesEndRef, loadHistory, loadMoreHistory, searchHistory, exportHistory, clearMessages, getStats, hasMore } = useChat(id || null);
@@ -52,6 +57,9 @@ export default function Chat() {
         if (stats) setChatStats(stats);
       };
       loadStats();
+      // 加载语音自动播放设置
+      const savedAutoPlay = localStorage.getItem('soulecho_autoplay');
+      setAutoPlayVoice(savedAutoPlay === 'true');
     }
   }, [id]);
 
@@ -139,6 +147,48 @@ export default function Chat() {
 
   const handleImagesSelected = (urls: string[]) => {
     setSelectedImages(urls);
+  };
+
+  // 处理语音录制完成
+  const handleVoiceRecordingComplete = async (blob: Blob) => {
+    // 将语音转换为文本
+    setShowVoiceInput(false);
+    setSending(true);
+
+    try {
+      // 这里应该调用语音识别 API
+      // 暂时用模拟的文本代替
+      // 实际项目中需要调用 Whisper 或其他 STT 服务
+      const formData = new FormData();
+      formData.append('file', blob, 'voice.webm');
+
+      // 尝试使用浏览器内置的语音识别
+      if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
+        // 直接发送语音消息
+        await chatApi.sendMultimodal({
+          character_id: id!,
+          message: '[语音消息]',
+          images: [],
+        });
+      } else {
+        // 降级处理：提示用户
+        await sendMessage('[用户发送了语音消息]');
+      }
+
+      // 刷新消息历史
+      const { loadHistory: load } = await import('@/hooks/useChat');
+      const chatHook = load(id!);
+      await chatHook.loadHistory();
+    } catch (error) {
+      console.error('语音消息发送失败:', error);
+    } finally {
+      setSending(false);
+    }
+  };
+
+  const handleVoiceCancel = () => {
+    setShowVoiceInput(false);
+  };
   };
 
   // 根据角色性格动态生成快捷回复
@@ -266,6 +316,15 @@ export default function Chat() {
         >
           <Brain className="w-5 h-5" />
         </Link>
+
+        {/* 语音设置按钮 */}
+        <button
+          onClick={() => setShowVoiceSettings(true)}
+          className="p-2 hover:bg-white/10 rounded-full transition-colors text-gray-400"
+          title="语音设置"
+        >
+          <Volume2 className="w-5 h-5" />
+        </button>
 
         {/* 导出按钮 */}
         <button
@@ -686,55 +745,82 @@ export default function Chat() {
         </AnimatePresence>
 
         {/* 输入框 */}
-        <div className="flex items-center gap-2 p-4">
-          <button
-            onClick={() => setShowEmoji(!showEmoji)}
-            className={`p-3 rounded-xl transition-all ${
-              showEmoji
-                ? 'bg-gradient-to-r from-primary-500 to-pink-500 text-white'
-                : 'bg-white/10 text-gray-400 hover:bg-white/20'
-            }`}
-          >
-            <span className="text-xl">😊</span>
-          </button>
-
-          <button
-            onClick={() => setShowQuickReplies(!showQuickReplies)}
-            className={`p-3 rounded-xl transition-all ${
-              showQuickReplies
-                ? 'bg-gradient-to-r from-primary-500 to-pink-500 text-white'
-                : 'bg-white/10 text-gray-400 hover:bg-white/20'
-            }`}
-          >
-            <Zap className="w-5 h-5" />
-          </button>
-
-          <input
-            type="text"
-            placeholder={selectedImages.length > 0 ? "添加描述..." : "输入消息..."}
-            value={inputValue}
-            onChange={(e) => setInputValue(e.target.value)}
-            onKeyDown={(e) => e.key === 'Enter' && handleSend()}
-            className="flex-1 bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white placeholder-gray-500 focus:outline-none focus:border-primary-500 transition-colors"
-          />
-
-          {/* 图片上传 */}
-          {selectedImages.length === 0 && (
-            <ImageUploader
-              characterId={id || ''}
-              onImagesSelected={handleImagesSelected}
+        {showVoiceInput ? (
+          <div className="flex items-center gap-2 p-4">
+            <VoiceInput
+              onRecordingComplete={handleVoiceRecordingComplete}
+              onCancel={handleVoiceCancel}
             />
-          )}
+          </div>
+        ) : (
+          <div className="flex items-center gap-2 p-4">
+            <button
+              onClick={() => setShowEmoji(!showEmoji)}
+              className={`p-3 rounded-xl transition-all ${
+                showEmoji
+                  ? 'bg-gradient-to-r from-primary-500 to-pink-500 text-white'
+                  : 'bg-white/10 text-gray-400 hover:bg-white/20'
+              }`}
+            >
+              <span className="text-xl">😊</span>
+            </button>
 
-          <button
-            onClick={handleSend}
-            disabled={(!inputValue.trim() && selectedImages.length === 0) || sending}
-            className="p-3 bg-gradient-to-r from-primary-500 to-pink-500 rounded-xl text-white disabled:opacity-50 disabled:cursor-not-allowed hover:shadow-lg hover:shadow-primary-500/30 transition-all"
-          >
-            <Send className="w-5 h-5" />
-          </button>
-        </div>
+            <button
+              onClick={() => setShowQuickReplies(!showQuickReplies)}
+              className={`p-3 rounded-xl transition-all ${
+                showQuickReplies
+                  ? 'bg-gradient-to-r from-primary-500 to-pink-500 text-white'
+                  : 'bg-white/10 text-gray-400 hover:bg-white/20'
+              }`}
+            >
+              <Zap className="w-5 h-5" />
+            </button>
+
+            {/* 语音输入按钮 */}
+            <button
+              onClick={() => setShowVoiceInput(true)}
+              className="p-3 bg-white/10 rounded-xl text-gray-400 hover:bg-white/20 hover:text-white transition-all"
+            >
+              <Mic className="w-5 h-5" />
+            </button>
+
+            <input
+              type="text"
+              placeholder={selectedImages.length > 0 ? "添加描述..." : "输入消息..."}
+              value={inputValue}
+              onChange={(e) => setInputValue(e.target.value)}
+              onKeyDown={(e) => e.key === 'Enter' && handleSend()}
+              className="flex-1 bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white placeholder-gray-500 focus:outline-none focus:border-primary-500 transition-colors"
+            />
+
+            {/* 图片上传 */}
+            {selectedImages.length === 0 && (
+              <ImageUploader
+                characterId={id || ''}
+                onImagesSelected={handleImagesSelected}
+              />
+            )}
+
+            <button
+              onClick={handleSend}
+              disabled={(!inputValue.trim() && selectedImages.length === 0) || sending}
+              className="p-3 bg-gradient-to-r from-primary-500 to-pink-500 rounded-xl text-white disabled:opacity-50 disabled:cursor-not-allowed hover:shadow-lg hover:shadow-primary-500/30 transition-all"
+            >
+              <Send className="w-5 h-5" />
+            </button>
+          </div>
+        )}
       </div>
+
+      {/* 语音设置弹窗 */}
+      <AnimatePresence>
+        {showVoiceSettings && character && (
+          <VoiceSettings
+            characterGender={character.gender}
+            onClose={() => setShowVoiceSettings(false)}
+          />
+        )}
+      </AnimatePresence>
     </div>
   );
 }
