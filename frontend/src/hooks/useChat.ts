@@ -6,8 +6,11 @@ const API_BASE = import.meta.env.VITE_API_BASE_URL || '/api';
 export function useChat(characterId: string | null) {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [loading, setLoading] = useState(false);
+  const [loadingMore, setLoadingMore] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [streaming, setStreaming] = useState(false);
+  const [hasMore, setHasMore] = useState(true);
+  const [totalMessages, setTotalMessages] = useState(0);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const scrollToBottom = useCallback(() => {
@@ -123,30 +126,116 @@ export function useChat(characterId: string | null) {
   const loadHistory = useCallback(async () => {
     if (!characterId) return;
 
+    setLoading(true);
     try {
-      const response = await fetch(`${API_BASE}/chat/history/${characterId}`);
+      const response = await fetch(`${API_BASE}/chat/history/${characterId}?offset=0&limit=50`);
       if (response.ok) {
-        const history = await response.json();
-        setMessages(history);
+        const data = await response.json();
+        setMessages(data.messages);
+        setTotalMessages(data.total);
+        setHasMore(data.has_more);
         setTimeout(scrollToBottom, 100);
       }
     } catch (err) {
       console.error('加载历史记录失败:', err);
+    } finally {
+      setLoading(false);
     }
   }, [characterId, scrollToBottom]);
 
-  const clearMessages = useCallback(() => {
-    setMessages([]);
-  }, []);
+  const loadMoreHistory = useCallback(async () => {
+    if (!characterId || loadingMore || !hasMore) return;
+
+    setLoadingMore(true);
+    try {
+      const response = await fetch(
+        `${API_BASE}/chat/history/${characterId}?offset=${messages.length}&limit=50`
+      );
+      if (response.ok) {
+        const data = await response.json();
+        // 插入到开头
+        setMessages((prev) => [...data.messages, ...prev]);
+        setTotalMessages(data.total);
+        setHasMore(data.has_more);
+      }
+    } catch (err) {
+      console.error('加载更多历史记录失败:', err);
+    } finally {
+      setLoadingMore(false);
+    }
+  }, [characterId, messages.length, loadingMore, hasMore]);
+
+  const searchHistory = useCallback(async (query: string) => {
+    if (!characterId || !query.trim()) return [];
+
+    try {
+      const response = await fetch(
+        `${API_BASE}/chat/history/${characterId}/search?q=${encodeURIComponent(query)}`
+      );
+      if (response.ok) {
+        return await response.json();
+      }
+    } catch (err) {
+      console.error('搜索历史记录失败:', err);
+    }
+    return null;
+  }, [characterId]);
+
+  const exportHistory = useCallback(async () => {
+    if (!characterId) return null;
+
+    try {
+      const response = await fetch(`${API_BASE}/chat/history/${characterId}/export`);
+      if (response.ok) {
+        return await response.json();
+      }
+    } catch (err) {
+      console.error('导出历史记录失败:', err);
+    }
+    return null;
+  }, [characterId]);
+
+  const clearMessages = useCallback(async () => {
+    if (!characterId) return;
+
+    try {
+      await fetch(`${API_BASE}/chat/history/${characterId}`, { method: 'DELETE' });
+      setMessages([]);
+      setTotalMessages(0);
+    } catch (err) {
+      console.error('清空聊天记录失败:', err);
+    }
+  }, [characterId]);
+
+  const getStats = useCallback(async () => {
+    if (!characterId) return null;
+
+    try {
+      const response = await fetch(`${API_BASE}/chat/history/${characterId}/stats`);
+      if (response.ok) {
+        return await response.json();
+      }
+    } catch (err) {
+      console.error('获取统计信息失败:', err);
+    }
+    return null;
+  }, [characterId]);
 
   return {
     messages,
     loading,
+    loadingMore,
     streaming,
     error,
+    hasMore,
+    totalMessages,
     sendMessage,
     loadHistory,
+    loadMoreHistory,
+    searchHistory,
+    exportHistory,
     clearMessages,
+    getStats,
     messagesEndRef,
   };
 }

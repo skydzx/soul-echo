@@ -1,7 +1,7 @@
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useState, useRef, useCallback } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ArrowLeft, Send, MoreVertical, Zap, X, Image as ImageIcon, Mic } from 'lucide-react';
+import { ArrowLeft, Send, MoreVertical, Zap, X, Image as ImageIcon, Mic, Search, Download, Trash2, ChevronDown } from 'lucide-react';
 import { useChat } from '@/hooks/useChat';
 import { useCharacterStore } from '@/stores/characterStore';
 import { useAuthStore } from '@/stores/authStore';
@@ -18,11 +18,17 @@ export default function Chat() {
   const [showQuickReplies, setShowQuickReplies] = useState(false);
   const [selectedImages, setSelectedImages] = useState<string[]>([]);
   const [sending, setSending] = useState(false);
+  const [showSearch, setShowSearch] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [searchResults, setSearchResults] = useState<any[]>([]);
+  const [showStats, setShowStats] = useState(false);
+  const [chatStats, setChatStats] = useState<any>(null);
 
   const character = characters.find((c) => c.id === id);
-  const { messages, loading, streaming, sendMessage, messagesEndRef } = useChat(id || null);
+  const { messages, loading, loadingMore, streaming, sendMessage, messagesEndRef, loadHistory, loadMoreHistory, searchHistory, exportHistory, clearMessages, getStats, hasMore } = useChat(id || null);
 
   const API_BASE = import.meta.env.VITE_API_BASE_URL || '';
+  const messagesContainerRef = useRef<HTMLDivElement>(null);
 
   // 登录保护
   useEffect(() => {
@@ -39,14 +45,56 @@ export default function Chat() {
 
   useEffect(() => {
     if (id) {
-      const loadHistory = async () => {
-        const { loadHistory: load } = await import('@/hooks/useChat');
-        const chatHook = load(id);
-        await chatHook.loadHistory();
-      };
       loadHistory();
+      // 加载统计信息
+      const loadStats = async () => {
+        const stats = await getStats();
+        if (stats) setChatStats(stats);
+      };
+      loadStats();
     }
   }, [id]);
+
+  // 滚动监听 - 加载更多
+  const handleScroll = useCallback(() => {
+    if (!messagesContainerRef.current || loadingMore) return;
+
+    const { scrollTop } = messagesContainerRef.current;
+    if (scrollTop < 100 && hasMore && messages.length > 0) {
+      loadMoreHistory();
+    }
+  }, [loadingMore, hasMore, messages.length, loadMoreHistory]);
+
+  // 搜索聊天记录
+  const handleSearch = async () => {
+    if (!searchQuery.trim()) return;
+    const results = await searchHistory(searchQuery);
+    if (results) {
+      setSearchResults(results.results || []);
+    }
+  };
+
+  // 导出聊天记录
+  const handleExport = async () => {
+    const data = await exportHistory();
+    if (data) {
+      const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `soulecho-${character?.name || 'chat'}-${new Date().toISOString().slice(0, 10)}.json`;
+      a.click();
+      URL.revokeObjectURL(url);
+    }
+  };
+
+  // 清空聊天记录
+  const handleClearChat = async () => {
+    if (window.confirm('确定要清空聊天记录吗？此操作不可恢复。')) {
+      await clearMessages();
+      setChatStats(null);
+    }
+  };
 
   const handleSend = async () => {
     if ((!inputValue.trim() && selectedImages.length === 0) || sending) return;
@@ -124,6 +172,42 @@ export default function Chat() {
   const [showEmoji, setShowEmoji] = useState(false);
   const [activeEmojiPack, setActiveEmojiPack] = useState(0);
 
+  // 按日期分组消息
+  const groupedMessages = messages.reduce((groups: { date: string; messages: any[] }[], msg) => {
+    const date = msg.timestamp ? new Date(msg.timestamp).toLocaleDateString('zh-CN', {
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric',
+      weekday: 'long'
+    }) : '未知时间';
+
+    const lastGroup = groups[groups.length - 1];
+    if (lastGroup && lastGroup.date === date) {
+      lastGroup.messages.push(msg);
+    } else {
+      groups.push({ date, messages: [msg] });
+    }
+    return groups;
+  }, []);
+
+  // 格式化日期显示
+  const formatDateHeader = (dateStr: string) => {
+    const today = new Date().toLocaleDateString('zh-CN', {
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric'
+    });
+    const yesterday = new Date(Date.now() - 86400000).toLocaleDateString('zh-CN', {
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric'
+    });
+
+    if (dateStr.includes(today)) return '今天';
+    if (dateStr.includes(yesterday)) return '昨天';
+    return dateStr;
+  };
+
   if (!character) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -166,6 +250,32 @@ export default function Chat() {
           </div>
         </div>
 
+        {/* 搜索按钮 */}
+        <button
+          onClick={() => setShowSearch(!showSearch)}
+          className={`p-2 rounded-full transition-colors ${showSearch ? 'bg-primary-500 text-white' : 'hover:bg-white/10 text-gray-400'}`}
+        >
+          <Search className="w-5 h-5" />
+        </button>
+
+        {/* 导出按钮 */}
+        <button
+          onClick={handleExport}
+          className="p-2 hover:bg-white/10 rounded-full transition-colors text-gray-400"
+          title="导出聊天记录"
+        >
+          <Download className="w-5 h-5" />
+        </button>
+
+        {/* 统计按钮 */}
+        <button
+          onClick={() => setShowStats(!showStats)}
+          className={`p-2 rounded-full transition-colors ${showStats ? 'bg-primary-500 text-white' : 'hover:bg-white/10 text-gray-400'}`}
+          title="聊天统计"
+        >
+          <span className="text-sm font-medium">{messages.length}</span>
+        </button>
+
         <Link
           to={`/profile/${character.id}`}
           className="p-2 hover:bg-white/10 rounded-full transition-colors"
@@ -174,8 +284,141 @@ export default function Chat() {
         </Link>
       </header>
 
+      {/* 搜索框 */}
+      <AnimatePresence>
+        {showSearch && (
+          <motion.div
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: 'auto', opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            className="glass border-b border-white/10 overflow-hidden"
+          >
+            <div className="p-3 flex gap-2">
+              <input
+                type="text"
+                placeholder="搜索聊天记录..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
+                className="flex-1 bg-white/10 border border-white/10 rounded-lg px-3 py-2 text-white placeholder-gray-500 focus:outline-none focus:border-primary-500"
+              />
+              <button
+                onClick={handleSearch}
+                className="px-4 py-2 bg-primary-500 rounded-lg text-white hover:bg-primary-600 transition-colors"
+              >
+                搜索
+              </button>
+              <button
+                onClick={() => {
+                  setShowSearch(false);
+                  setSearchQuery('');
+                  setSearchResults([]);
+                }}
+                className="px-3 py-2 text-gray-400 hover:text-white"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            {/* 搜索结果 */}
+            {searchResults.length > 0 && (
+              <div className="px-3 pb-3">
+                <p className="text-gray-400 text-sm mb-2">找到 {searchResults.length} 条相关消息</p>
+                <div className="space-y-2 max-h-40 overflow-y-auto">
+                  {searchResults.map((result, idx) => (
+                    <div
+                      key={idx}
+                      className="p-2 bg-white/5 rounded-lg text-sm cursor-pointer hover:bg-white/10"
+                      onClick={() => {
+                        // 滚动到对应消息
+                        setShowSearch(false);
+                      }}
+                    >
+                      <span className={`inline-block w-12 text-xs ${result.role === 'user' ? 'text-pink-400' : 'text-primary-400'}`}>
+                        {result.role === 'user' ? '我' : character.name}
+                      </span>
+                      <span className="text-gray-300 ml-2">{result.content.slice(0, 50)}...</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* 统计面板 */}
+      <AnimatePresence>
+        {showStats && chatStats && (
+          <motion.div
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: 'auto', opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            className="glass border-b border-white/10 overflow-hidden"
+          >
+            <div className="p-4">
+              <div className="flex items-center justify-between mb-3">
+                <h3 className="text-white font-medium">聊天统计</h3>
+                <button
+                  onClick={() => setShowStats(false)}
+                  className="p-1 hover:bg-white/10 rounded-lg text-gray-400"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+              <div className="grid grid-cols-3 gap-4 text-center">
+                <div className="bg-white/5 rounded-lg p-3">
+                  <p className="text-2xl font-bold text-white">{chatStats.total_messages}</p>
+                  <p className="text-gray-400 text-xs">总消息数</p>
+                </div>
+                <div className="bg-white/5 rounded-lg p-3">
+                  <p className="text-2xl font-bold text-primary-400">{chatStats.chat_days}</p>
+                  <p className="text-gray-400 text-xs">聊天天数</p>
+                </div>
+                <div className="bg-white/5 rounded-lg p-3">
+                  <p className="text-2xl font-bold text-pink-400">{Math.round(chatStats.total_characters / 100)}</p>
+                  <p className="text-gray-400 text-xs">对话字数(百)</p>
+                </div>
+              </div>
+              <div className="flex gap-2 mt-3">
+                <button
+                  onClick={handleClearChat}
+                  className="flex-1 flex items-center justify-center gap-2 py-2 bg-red-500/20 text-red-400 rounded-lg hover:bg-red-500/30 transition-colors"
+                >
+                  <Trash2 className="w-4 h-4" />
+                  清空聊天
+                </button>
+              </div>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       {/* 消息区域 */}
-      <div className="flex-1 overflow-y-auto p-4 space-y-4">
+      <div
+        ref={messagesContainerRef}
+        onScroll={handleScroll}
+        className="flex-1 overflow-y-auto p-4 space-y-4"
+      >
+        {/* 加载更多提示 */}
+        {hasMore && messages.length > 0 && (
+          <div className="flex justify-center py-2">
+            {loadingMore ? (
+              <div className="flex items-center gap-2 text-gray-400 text-sm">
+                <div className="w-4 h-4 border-2 border-primary-400 border-t-transparent rounded-full animate-spin" />
+                加载中...
+              </div>
+            ) : (
+              <button
+                onClick={() => loadMoreHistory()}
+                className="text-gray-400 text-sm hover:text-white transition-colors flex items-center gap-1"
+              >
+                <ChevronDown className="w-4 h-4" />
+                加载更多消息
+              </button>
+            )}
+          </div>
+        )}
+
         <AnimatePresence>
           {messages.length === 0 && (
             <motion.div
@@ -205,15 +448,25 @@ export default function Chat() {
           )}
         </AnimatePresence>
 
-        <AnimatePresence>
-          {messages.map((message, index) => (
-            <motion.div
-              key={index}
-              initial={{ opacity: 0, y: 20, scale: 0.95 }}
-              animate={{ opacity: 1, y: 0, scale: 1 }}
-              exit={{ opacity: 0, y: -10 }}
-              className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}
-            >
+        {/* 按日期分组显示消息 */}
+        {groupedMessages.map((group, groupIndex) => (
+          <div key={groupIndex}>
+            {/* 日期分隔线 */}
+            <div className="flex items-center justify-center my-4">
+              <span className="px-4 py-1 text-xs text-gray-500 bg-white/5 rounded-full">
+                {formatDateHeader(group.date)}
+              </span>
+            </div>
+
+            {/* 该日期的消息 */}
+            {group.messages.map((message, index) => (
+              <motion.div
+                key={`${groupIndex}-${index}`}
+                initial={{ opacity: 0, y: 20, scale: 0.95 }}
+                animate={{ opacity: 1, y: 0, scale: 1 }}
+                exit={{ opacity: 0, y: -10 }}
+                className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}
+              >
               <div
                 className={`max-w-[75%] rounded-2xl overflow-hidden ${
                   message.role === 'user'
@@ -268,8 +521,9 @@ export default function Chat() {
                 </div>
               </div>
             </motion.div>
-          ))}
-        </AnimatePresence>
+            ))}
+          </div>
+        ))}
 
         {(loading || streaming) && (
           <motion.div

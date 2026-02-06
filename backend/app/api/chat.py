@@ -1,4 +1,4 @@
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Query
 from pydantic import BaseModel
 from typing import List, Dict, Optional, AsyncGenerator
 from datetime import datetime
@@ -169,14 +169,29 @@ async def chat(request: ChatRequest) -> ChatResponse:
 
 
 @router.get("/chat/history/{character_id}")
-async def get_chat_history(character_id: str) -> List[Dict]:
-    """获取聊天历史"""
+async def get_chat_history(
+    character_id: str,
+    offset: int = 0,
+    limit: int = 50
+) -> Dict:
+    """获取聊天历史（分页）"""
     characters = load_characters()
 
     if character_id not in characters:
         raise HTTPException(status_code=404, detail="角色不存在")
 
-    return characters[character_id].get("chat_history", [])
+    chat_history = characters[character_id].get("chat_history", [])
+
+    # 返回分页数据
+    total = len(chat_history)
+    messages = chat_history[offset:offset + limit]
+
+    return {
+        "messages": messages,
+        "total": total,
+        "has_more": offset + limit < total,
+        "next_offset": offset + limit if offset + limit < total else None
+    }
 
 
 @router.post("/chat/stream")
@@ -531,3 +546,137 @@ async def voice_to_text(request: VoiceMessageRequest):
         raise
     except Exception as e:
         return {"text": f"语音识别失败: {str(e)}", "success": False}
+
+
+# ============ 聊天历史管理 ============
+
+@router.get("/chat/history/{character_id}/search")
+async def search_chat_history(
+    character_id: str,
+    q: str = Query(..., description="搜索关键词")
+):
+    """搜索聊天记录"""
+    characters = load_characters()
+
+    if character_id not in characters:
+        raise HTTPException(status_code=404, detail="角色不存在")
+
+    chat_history = characters[character_id].get("chat_history", [])
+
+    # 搜索用户和助手的消息
+    results = []
+    for idx, msg in enumerate(chat_history):
+        if q.lower() in msg.get("content", "").lower():
+            results.append({
+                "index": idx,
+                "role": msg.get("role"),
+                "content": msg.get("content"),
+                "timestamp": msg.get("timestamp")
+            })
+
+    return {
+        "query": q,
+        "count": len(results),
+        "results": results[-20:]  # 只返回最近的20条匹配
+    }
+
+
+@router.get("/chat/history/{character_id}/export")
+async def export_chat_history(character_id: str):
+    """导出聊天记录为 JSON"""
+    characters = load_characters()
+
+    if character_id not in characters:
+        raise HTTPException(status_code=404, detail="角色不存在")
+
+    character = characters[character_id]
+    chat_history = character.get("chat_history", [])
+
+    # 格式化导出数据
+    export_data = {
+        "character": {
+            "name": character.get("name"),
+            "gender": character.get("gender"),
+            "relationship_type": character.get("relationship_type"),
+        },
+        "export_time": datetime.now().isoformat(),
+        "total_messages": len(chat_history),
+        "messages": chat_history
+    }
+
+    return export_data
+
+
+@router.delete("/chat/history/{character_id}")
+async def clear_chat_history(character_id: str):
+    """清空聊天历史"""
+    characters = load_characters()
+
+    if character_id not in characters:
+        raise HTTPException(status_code=404, detail="角色不存在")
+
+    characters[character_id]["chat_history"] = []
+    save_characters(characters)
+
+    return {"message": "聊天历史已清空", "character_id": character_id}
+
+
+@router.delete("/chat/history/{character_id}/message/{message_index}")
+async def delete_chat_message(
+    character_id: str,
+    message_index: int
+):
+    """删除指定消息"""
+    characters = load_characters()
+
+    if character_id not in characters:
+        raise HTTPException(status_code=404, detail="角色不存在")
+
+    chat_history = characters[character_id].get("chat_history", [])
+
+    if message_index < 0 or message_index >= len(chat_history):
+        raise HTTPException(status_code=404, detail="消息不存在")
+
+    deleted_msg = chat_history.pop(message_index)
+    save_characters(characters)
+
+    return {"message": "消息已删除", "deleted_message": deleted_msg}
+
+
+@router.get("/chat/history/{character_id}/stats")
+async def get_chat_stats(character_id: str):
+    """获取聊天统计信息"""
+    characters = load_characters()
+
+    if character_id not in characters:
+        raise HTTPException(status_code=404, detail="角色不存在")
+
+    chat_history = characters[character_id].get("chat_history", [])
+
+    # 统计
+    user_msgs = [m for m in chat_history if m.get("role") == "user"]
+    assistant_msgs = [m for m in chat_history if m.get("role") == "assistant"]
+
+    # 计算总字数
+    total_chars = sum(len(m.get("content", "")) for m in chat_history)
+
+    # 获取日期范围
+    timestamps = [m.get("timestamp") for m in chat_history if m.get("timestamp")]
+    dates = set()
+    for ts in timestamps:
+        try:
+            dates.add(ts[:10])
+        except:
+            pass
+
+    return {
+        "total_messages": len(chat_history),
+        "user_messages": len(user_msgs),
+        "assistant_messages": len(assistant_msgs),
+        "total_characters": total_chars,
+        "chat_days": len(dates),
+        "date_range": {
+            "start": min(dates) if dates else None,
+            "end": max(dates) if dates else None
+        } if dates else None
+    }
