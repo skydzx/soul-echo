@@ -1,8 +1,9 @@
 import { useEffect, useState } from 'react';
-import { useParams, useNavigate, Link } from 'react-router-dom';
-import { motion } from 'framer-motion';
-import { ArrowLeft, Heart, MessageCircle, Edit, Trash2, Brain, Plus, X, Sparkles } from 'lucide-react';
+import { useParams, useNavigate, Link, Outlet } from 'react-router-dom';
+import { motion, AnimatePresence } from 'framer-motion';
+import { ArrowLeft, Heart, MessageCircle, Edit, Trash2, Brain, Plus, X, Sparkles, User, Settings, LogOut, Calendar, Clock, Star } from 'lucide-react';
 import { useCharacterStore } from '@/stores/characterStore';
+import { useAuthStore } from '@/stores/authStore';
 import Button from '@/components/ui/Button';
 import AvatarUploader from '@/components/character/AvatarUploader';
 import { memoryApi, type Memory } from '@/services/api';
@@ -11,23 +12,27 @@ export default function Profile() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { characters, fetchCharacters, deleteCharacter } = useCharacterStore();
+  const { user, logout } = useAuthStore();
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [memories, setMemories] = useState<Memory[]>([]);
   const [memoryCount, setMemoryCount] = useState(0);
   const [showAddMemory, setShowAddMemory] = useState(false);
   const [newMemory, setNewMemory] = useState('');
   const [loading, setLoading] = useState(false);
+  const [activeTab, setActiveTab] = useState<'profile' | 'settings'>('profile');
+  const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
 
-  const character = characters.find((c) => c.id === id);
+  const isSelfProfile = id === 'self' || !id;
+  const character = !isSelfProfile ? characters.find((c) => c.id === id) : null;
 
   useEffect(() => {
-    if (!characters.length) {
+    if (!isSelfProfile && !characters.length) {
       fetchCharacters();
     }
   }, [id]);
 
   useEffect(() => {
-    if (id) {
+    if (!isSelfProfile && id) {
       loadMemories();
     }
   }, [id]);
@@ -80,6 +85,11 @@ export default function Profile() {
     }
   };
 
+  const handleLogout = () => {
+    logout();
+    navigate('/login');
+  };
+
   const getMemoryIcon = (type: string) => {
     switch (type) {
       case '生日': return '🎂';
@@ -97,6 +107,227 @@ export default function Profile() {
     }
   };
 
+  // 计算聊天天数
+  const calculateChatDays = () => {
+    if (!character?.chat_history?.length) return 0;
+    const timestamps = character.chat_history
+      .filter((m: any) => m.timestamp)
+      .map((m: any) => new Date(m.timestamp).toDateString());
+    return new Set(timestamps).size;
+  };
+
+  // 如果是用户个人中心
+  if (isSelfProfile) {
+    return (
+      <div className="min-h-screen py-8 px-4">
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="max-w-2xl mx-auto"
+        >
+          {/* 返回按钮 */}
+          <button
+            onClick={() => navigate('/')}
+            className="flex items-center gap-2 text-gray-400 hover:text-white mb-6 transition-colors"
+          >
+            <ArrowLeft className="w-5 h-5" />
+            <span>返回首页</span>
+          </button>
+
+          {/* 用户信息 */}
+          <div className="glass rounded-2xl overflow-hidden">
+            {/* 头部背景 */}
+            <div className="h-32 bg-gradient-to-r from-blue-500 via-purple-500 to-pink-500" />
+
+            {/* 用户信息 */}
+            <div className="px-6 pb-6">
+              {/* 头像 */}
+              <div className="relative -mt-20 mb-4">
+                <div className="w-24 h-24 rounded-full bg-gradient-to-br from-primary-400 to-pink-400 flex items-center justify-center text-3xl text-white font-bold border-4 border-white/20">
+                  {user?.username?.charAt(0).toUpperCase() || 'U'}
+                </div>
+              </div>
+
+              {/* 基本信息 */}
+              <div className="mb-6">
+                <h1 className="text-2xl font-bold text-white mb-1">{user?.username || '用户'}</h1>
+                <p className="text-gray-400">{user?.email}</p>
+              </div>
+
+              {/* 标签页 */}
+              <div className="flex gap-4 border-b border-white/10 pb-4 mb-6">
+                <button
+                  onClick={() => setActiveTab('profile')}
+                  className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-colors ${
+                    activeTab === 'profile' ? 'bg-primary-500/20 text-primary-400' : 'text-gray-400 hover:text-white'
+                  }`}
+                >
+                  <User className="w-4 h-4" />
+                  个人资料
+                </button>
+                <button
+                  onClick={() => setActiveTab('settings')}
+                  className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-colors ${
+                    activeTab === 'settings' ? 'bg-primary-500/20 text-primary-400' : 'text-gray-400 hover:text-white'
+                  }`}
+                >
+                  <Settings className="w-4 h-4" />
+                  账号设置
+                </button>
+              </div>
+
+              {/* 个人资料内容 */}
+              {activeTab === 'profile' && (
+                <div className="space-y-6">
+                  {/* 统计数据 */}
+                  <div className="grid grid-cols-3 gap-4">
+                    <div className="glass rounded-xl p-4 text-center">
+                      <p className="text-2xl font-bold text-white">{characters.length}</p>
+                      <p className="text-gray-400 text-sm">AI 伴侣</p>
+                    </div>
+                    <div className="glass rounded-xl p-4 text-center">
+                      <p className="text-2xl font-bold text-white">
+                        {characters.reduce((acc, c) => acc + (c.chat_history?.filter((m: any) => m.role === 'user').length || 0), 0)}
+                      </p>
+                      <p className="text-gray-400 text-sm">对话次数</p>
+                    </div>
+                    <div className="glass rounded-xl p-4 text-center">
+                      <p className="text-2xl font-bold text-white">
+                        {characters.reduce((acc, c) => acc + (c.memories?.length || 0), 0)}
+                      </p>
+                      <p className="text-gray-400 text-sm">共同记忆</p>
+                    </div>
+                  </div>
+
+                  {/* 我的角色 */}
+                  <div>
+                    <h3 className="text-sm font-medium text-gray-400 mb-3">我的 AI 伴侣</h3>
+                    {characters.length > 0 ? (
+                      <div className="space-y-3">
+                        {characters.map((char) => (
+                          <Link
+                            key={char.id}
+                            to={`/profile/${char.id}`}
+                            className="flex items-center gap-4 p-3 bg-white/5 rounded-xl hover:bg-white/10 transition-colors"
+                          >
+                            <div className="w-12 h-12 bg-gradient-to-br from-primary-400 to-pink-400 rounded-xl flex items-center justify-center text-xl">
+                              {char.avatar ? (
+                                <img src={char.avatar} alt={char.name} className="w-full h-full object-cover rounded-xl" />
+                              ) : (
+                                char.gender === '女性' ? '👩' : '👨'
+                              )}
+                            </div>
+                            <div className="flex-1">
+                              <p className="text-white font-medium">{char.name}</p>
+                              <p className="text-gray-400 text-sm">{char.relationship_type}</p>
+                            </div>
+                            <span className="text-gray-500 text-sm">
+                              {char.chat_history?.filter((m: any) => m.role === 'user').length || 0} 条对话
+                            </span>
+                          </Link>
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="text-center py-8">
+                        <div className="w-16 h-16 bg-white/10 rounded-full flex items-center justify-center mx-auto mb-4">
+                          <Heart className="w-8 h-8 text-gray-400" />
+                        </div>
+                        <p className="text-gray-400 mb-4">还没有创建 AI 伴侣</p>
+                        <Link to="/create">
+                          <Button>
+                            <Plus className="w-4 h-4 mr-2" />
+                            创建第一个伴侣
+                          </Button>
+                        </Link>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {/* 账号设置内容 */}
+              {activeTab === 'settings' && (
+                <div className="space-y-4">
+                  <div className="p-4 bg-white/5 rounded-xl">
+                    <h4 className="text-white font-medium mb-2">账号信息</h4>
+                    <div className="space-y-2 text-sm">
+                      <div className="flex justify-between">
+                        <span className="text-gray-400">用户名</span>
+                        <span className="text-white">{user?.username}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-gray-400">邮箱</span>
+                        <span className="text-white">{user?.email}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-gray-400">注册时间</span>
+                        <span className="text-white">
+                          {user?.created_at ? new Date(user.created_at).toLocaleDateString('zh-CN') : '未知'}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+
+                  <Button
+                    variant="ghost"
+                    onClick={() => setShowLogoutConfirm(true)}
+                    className="w-full text-red-400 hover:text-red-300 hover:bg-red-500/10"
+                  >
+                    <LogOut className="w-4 h-4 mr-2" />
+                    退出登录
+                  </Button>
+                </div>
+              )}
+            </div>
+          </div>
+        </motion.div>
+
+        {/* 退出登录确认 */}
+        <AnimatePresence>
+          {showLogoutConfirm && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4"
+              onClick={() => setShowLogoutConfirm(false)}
+            >
+              <motion.div
+                initial={{ scale: 0.9, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                className="glass rounded-2xl p-6 max-w-sm w-full"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <div className="text-center">
+                  <div className="w-12 h-12 bg-red-500/20 rounded-full flex items-center justify-center mx-auto mb-4">
+                    <LogOut className="w-6 h-6 text-red-400" />
+                  </div>
+                  <h3 className="text-lg font-semibold text-white mb-2">确认退出</h3>
+                  <p className="text-gray-400 mb-6">确定要退出登录吗？</p>
+                  <div className="flex gap-3">
+                    <Button
+                      variant="secondary"
+                      onClick={() => setShowLogoutConfirm(false)}
+                      className="flex-1"
+                    >
+                      取消
+                    </Button>
+                    <Button
+                      onClick={handleLogout}
+                      className="flex-1 bg-red-500 hover:bg-red-600"
+                    >
+                      退出
+                    </Button>
+                  </div>
+                </div>
+              </motion.div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </div>
+    );
+  }
+
+  // 如果是角色个人中心
   if (!character) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -109,6 +340,9 @@ export default function Profile() {
       </div>
     );
   }
+
+  const chatDays = calculateChatDays();
+  const chatCount = character.chat_history?.filter((m: any) => m.role === 'user').length || 0;
 
   return (
     <div className="min-h-screen py-8 px-4">
@@ -170,6 +404,19 @@ export default function Profile() {
                 <Edit className="w-4 h-4 mr-2" />
                 编辑资料
               </Button>
+            </div>
+
+            {/* 标签页 */}
+            <div className="flex gap-2 border-b border-white/10 pb-4 mb-4 overflow-x-auto">
+              <button className="px-4 py-2 bg-primary-500/20 text-primary-400 rounded-lg text-sm whitespace-nowrap">
+                资料
+              </button>
+              <button className="px-4 py-2 text-gray-400 hover:text-white rounded-lg text-sm whitespace-nowrap">
+                记忆
+              </button>
+              <button className="px-4 py-2 text-gray-400 hover:text-white rounded-lg text-sm whitespace-nowrap">
+                聊天记录
+              </button>
             </div>
 
             {/* 详细信息 */}
@@ -274,25 +521,28 @@ export default function Profile() {
               {/* 统计数据 */}
               <div className="border-t border-white/10 pt-4">
                 <h3 className="text-sm font-medium text-gray-400 mb-3">统计信息</h3>
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-3 gap-4">
                   <div className="glass rounded-xl p-4 text-center">
-                    <p className="text-2xl font-bold text-white">
-                      {character.chat_history?.filter((m: any) => m.role === 'user').length || 0}
-                    </p>
-                    <p className="text-gray-400 text-sm">对话次数</p>
+                    <MessageCircle className="w-5 h-5 text-primary-400 mx-auto mb-2" />
+                    <p className="text-2xl font-bold text-white">{chatCount}</p>
+                    <p className="text-gray-400 text-xs">对话次数</p>
                   </div>
                   <div className="glass rounded-xl p-4 text-center">
-                    <p className="text-2xl font-bold text-white">
-                      {memoryCount}
-                    </p>
-                    <p className="text-gray-400 text-sm">共同记忆</p>
+                    <Calendar className="w-5 h-5 text-green-400 mx-auto mb-2" />
+                    <p className="text-2xl font-bold text-white">{chatDays}</p>
+                    <p className="text-gray-400 text-xs">聊天天数</p>
+                  </div>
+                  <div className="glass rounded-xl p-4 text-center">
+                    <Brain className="w-5 h-5 text-pink-400 mx-auto mb-2" />
+                    <p className="text-2xl font-bold text-white">{memoryCount}</p>
+                    <p className="text-gray-400 text-xs">共同记忆</p>
                   </div>
                 </div>
               </div>
             </div>
 
             {/* 删除按钮 */}
-            <div className="border-t border-white/10 pt-6">
+            <div className="border-t border-white/10 pt-6 mt-6">
               <Button
                 variant="ghost"
                 onClick={() => setShowDeleteConfirm(true)}
@@ -307,98 +557,102 @@ export default function Profile() {
       </motion.div>
 
       {/* 删除确认弹窗 */}
-      {showDeleteConfirm && (
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4"
-          onClick={() => setShowDeleteConfirm(false)}
-        >
+      <AnimatePresence>
+        {showDeleteConfirm && (
           <motion.div
-            initial={{ scale: 0.9, opacity: 0 }}
-            animate={{ scale: 1, opacity: 1 }}
-            className="glass rounded-2xl p-6 max-w-sm w-full"
-            onClick={(e) => e.stopPropagation()}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4"
+            onClick={() => setShowDeleteConfirm(false)}
           >
-            <div className="text-center">
-              <div className="w-12 h-12 bg-red-500/20 rounded-full flex items-center justify-center mx-auto mb-4">
-                <Trash2 className="w-6 h-6 text-red-400" />
+            <motion.div
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              className="glass rounded-2xl p-6 max-w-sm w-full"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="text-center">
+                <div className="w-12 h-12 bg-red-500/20 rounded-full flex items-center justify-center mx-auto mb-4">
+                  <Trash2 className="w-6 h-6 text-red-400" />
+                </div>
+                <h3 className="text-lg font-semibold text-white mb-2">确认删除</h3>
+                <p className="text-gray-400 mb-6">
+                  确定要删除 {character.name} 吗？此操作不可恢复。
+                </p>
+                <div className="flex gap-3">
+                  <Button
+                    variant="secondary"
+                    onClick={() => setShowDeleteConfirm(false)}
+                    className="flex-1"
+                  >
+                    取消
+                  </Button>
+                  <Button
+                    onClick={handleDelete}
+                    className="flex-1 bg-red-500 hover:bg-red-600"
+                  >
+                    删除
+                  </Button>
+                </div>
               </div>
-              <h3 className="text-lg font-semibold text-white mb-2">确认删除</h3>
-              <p className="text-gray-400 mb-6">
-                确定要删除 {character.name} 吗？此操作不可恢复。
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* 添加记忆弹窗 */}
+      <AnimatePresence>
+        {showAddMemory && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4"
+            onClick={() => setShowAddMemory(false)}
+          >
+            <motion.div
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              className="glass rounded-2xl p-6 max-w-md w-full"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="flex items-center gap-3 mb-4">
+                <div className="w-10 h-10 bg-primary-500/20 rounded-full flex items-center justify-center">
+                  <Sparkles className="w-5 h-5 text-primary-400" />
+                </div>
+                <h3 className="text-lg font-semibold text-white">添加重要记忆</h3>
+              </div>
+
+              <p className="text-gray-400 text-sm mb-4">
+                手动添加一条重要记忆，AI 会在对话中参考这些内容。
               </p>
-              <div className="flex gap-3">
+
+              <textarea
+                value={newMemory}
+                onChange={(e) => setNewMemory(e.target.value)}
+                placeholder="例如：我们第一次见面是在咖啡店..."
+                className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white placeholder-gray-500 focus:outline-none focus:border-primary-500 transition-colors min-h-[100px]"
+              />
+
+              <div className="flex gap-3 mt-4">
                 <Button
                   variant="secondary"
-                  onClick={() => setShowDeleteConfirm(false)}
+                  onClick={() => setShowAddMemory(false)}
                   className="flex-1"
                 >
                   取消
                 </Button>
                 <Button
-                  onClick={handleDelete}
-                  className="flex-1 bg-red-500 hover:bg-red-600"
+                  onClick={handleAddMemory}
+                  disabled={!newMemory.trim() || loading}
+                  className="flex-1"
                 >
-                  删除
+                  {loading ? '添加中...' : '添加'}
                 </Button>
               </div>
-            </div>
+            </motion.div>
           </motion.div>
-        </motion.div>
-      )}
-
-      {/* 添加记忆弹窗 */}
-      {showAddMemory && (
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4"
-          onClick={() => setShowAddMemory(false)}
-        >
-          <motion.div
-            initial={{ scale: 0.9, opacity: 0 }}
-            animate={{ scale: 1, opacity: 1 }}
-            className="glass rounded-2xl p-6 max-w-md w-full"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="flex items-center gap-3 mb-4">
-              <div className="w-10 h-10 bg-primary-500/20 rounded-full flex items-center justify-center">
-                <Sparkles className="w-5 h-5 text-primary-400" />
-              </div>
-              <h3 className="text-lg font-semibold text-white">添加重要记忆</h3>
-            </div>
-
-            <p className="text-gray-400 text-sm mb-4">
-              手动添加一条重要记忆，AI 会在对话中参考这些内容。
-            </p>
-
-            <textarea
-              value={newMemory}
-              onChange={(e) => setNewMemory(e.target.value)}
-              placeholder="例如：我们第一次见面是在咖啡店..."
-              className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white placeholder-gray-500 focus:outline-none focus:border-primary-500 transition-colors min-h-[100px]"
-            />
-
-            <div className="flex gap-3 mt-4">
-              <Button
-                variant="secondary"
-                onClick={() => setShowAddMemory(false)}
-                className="flex-1"
-              >
-                取消
-              </Button>
-              <Button
-                onClick={handleAddMemory}
-                disabled={!newMemory.trim() || loading}
-                className="flex-1"
-              >
-                {loading ? '添加中...' : '添加'}
-              </Button>
-            </div>
-          </motion.div>
-        </motion.div>
-      )}
+        )}
+      </AnimatePresence>
     </div>
   );
 }
